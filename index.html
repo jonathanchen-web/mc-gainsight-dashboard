@@ -202,7 +202,7 @@
     <div class="card">
       <div class="card-title">Account Rankings <span class="tag">by total user visits</span></div>
       <table>
-        <thead><tr><th>#</th><th>Account</th><th>Industry</th><th>Users</th><th>Total Visits</th><th>Top Features</th><th>Last Seen</th></tr></thead>
+        <thead><tr><th>#</th><th>Account</th><th>Sector</th><th>Users</th><th>Total Visits</th><th>Top Features</th><th>Last Seen</th></tr></thead>
         <tbody id="accounts-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -508,7 +508,7 @@ function renderDashboard(data, accountCache) {
     aTbody.innerHTML += `<tr>
       <td><span class="rank ${rankClass}">${i+1}</span></td>
       <td><strong>${a.name||aid.slice(0,12)}</strong><br><span style="font-size:11px;color:var(--muted);">${a.customAttributes?.sector||a.industry||''}</span></td>
-      <td style="color:var(--muted);font-size:12px;">${a.industry||a.customAttributes?.sector||'—'}</td>
+      <td style="color:var(--muted);font-size:12px;">${a.customAttributes?.sector||a.industry||'—'}</td>
       <td style="text-align:center;"><strong>${users}</strong></td>
       <td><div class="bar-cell"><div class="mini-bar" style="width:${barW}px;background:linear-gradient(90deg,${PALETTE[i]},${PALETTE[(i+1)%10]});"></div><span class="visits-num">${visits}</span></div></td>
       <td>${featTags(featsList.length ? featsList : ['Workspace','Tracker','Resources'])}</td>
