@@ -57,19 +57,31 @@ exports.handler = async (event) => {
 
     await sleep(600);
 
-    // Fetch accounts
-    const accountsRes = await fetch(`${BASE_URL}/accounts?pageSize=200`, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
-    if (!accountsRes.ok) {
-      throw new Error(`Gainsight /accounts returned ${accountsRes.status}`);
-    }
-    const accountsData = await accountsRes.json();
+    // Fetch ALL accounts with pagination (totalHits can exceed 200)
+    let allAccounts = [];
+    let acctScrollId = null;
+    let pagesFetched = 0;
+    do {
+      const acctUrl = acctScrollId
+        ? `${BASE_URL}/accounts?pageSize=100&scrollId=${encodeURIComponent(acctScrollId)}`
+        : `${BASE_URL}/accounts?pageSize=100`;
+      const accountsRes = await fetch(acctUrl, {
+        headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+      });
+      if (!accountsRes.ok) {
+        throw new Error(`Gainsight /accounts returned ${accountsRes.status}`);
+      }
+      const accountsData = await accountsRes.json();
+      allAccounts = allAccounts.concat(accountsData.accounts || []);
+      acctScrollId = accountsData.scrollId || null;
+      pagesFetched++;
+      if (acctScrollId) await sleep(400); // be gentle between pages
+    } while (acctScrollId && pagesFetched < 10); // safety cap: max 1000 accounts
 
     // Store in server cache
     cache = {
       users: usersData.users || [],
-      accounts: accountsData.accounts || [],
+      accounts: allAccounts,
     };
     cacheTime = Date.now();
 
