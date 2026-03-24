@@ -9,7 +9,7 @@
   :root {
     --bg: #0f1117; --surface: #1a1d27; --surface2: #222636;
     --border: #2e3250; --accent: #6366f1; --accent2: #22d3ee;
-    --accent3: #f59e0b; --accent4: #10b981; --accent5: #f43f5e;
+    --accent3: #f59e0b; --accent4: #10b981 --accent5: #f43f5e;
     --text: #e2e8f0; --muted: #94a3b8; --green: #10b981; --red: #f43f5e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,795 +21,134 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     z-index: 1000; gap: 20px;
   }
-  #loading-overlay.hidden { display: none; }
-  .spinner {
-    width: 48px; height: 48px;
-    border: 4px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { color: var(--muted); font-size: 15px; }
-  .loading-steps { color: var(--muted); font-size: 12px; max-width: 300px; text-align: center; line-height: 1.7; }
-  #loading-step { color: var(--accent2); }
-
-  /* Error banner */
-  #error-banner {
-    display: none; background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3);
-    color: #fca5a5; padding: 12px 20px; margin: 16px 32px; border-radius: 10px;
-    font-size: 13px; line-height: 1.6;
-  }
-  #error-banner.visible { display: block; }
-
-  /* Header */
-  header {
-    background: linear-gradient(135deg, #1a1d27 0%, #16193a 100%);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 32px;
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  }
-  header h1 { font-size: 20px; font-weight: 700; color: #fff; }
-  header h1 span { color: var(--accent); }
-  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .badge { background: rgba(99,102,241,0.15); color: var(--accent); border: 1px solid rgba(99,102,241,0.3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
-  .live-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
-  .live-dot.loading { background: var(--accent3); }
-  .live-dot.error { background: var(--red); animation: none; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-  #last-updated { font-size: 12px; color: var(--muted); }
-  .refresh-btn {
-    background: rgba(99,102,241,0.15); color: var(--accent); border: 1px solid rgba(99,102,241,0.3);
-    border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s;
-  }
-  .refresh-btn:hover { background: rgba(99,102,241,0.3); }
-  .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  /* Range selector */
-  .range-selector {
-    display: flex; align-items: center; gap: 4px;
-    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
-    border-radius: 10px; padding: 4px;
-  }
-  .range-btn {
-    background: transparent; color: var(--muted); border: none;
-    border-radius: 7px; padding: 5px 13px; font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: all 0.15s; white-space: nowrap;
-  }
-  .range-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-  .range-btn.active { background: var(--accent); color: #fff; }
-
-  /* Layout */
-  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
-  .section-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-  .section-title::before { content: ''; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; display: inline-block; }
-
-  /* KPI Cards */
-  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
-  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
-  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-  .kpi-card.blue::before { background: var(--accent); }
-  .kpi-card.cyan::before { background: var(--accent2); }
-  .kpi-card.amber::before { background: var(--accent3); }
-  .kpi-card.green::before { background: var(--accent4); }
-  .kpi-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 8px; }
-  .kpi-value { font-size: 32px; font-weight: 800; color: #fff; line-height: 1; }
-  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .kpi-icon { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: 0.15; }
-  .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; height: 1em; }
-  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-  /* Cards & layout */
-  .row { display: grid; gap: 20px; margin-bottom: 28px; }
-  .row-2 { grid-template-columns: 1fr 1fr; }
-  .row-65-35 { grid-template-columns: 65fr 35fr; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-  .card-title .tag { font-size: 11px; color: var(--muted); background: var(--surface2); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
-  .chart-wrap { position: relative; }
-
-  /* Tables */
-  table { width: 100%; border-collapse: collapse; }
-  thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
-  tbody tr { border-bottom: 1px solid rgba(46,50,80,0.5); transition: background 0.15s; }
-  tbody tr:hover { background: rgba(99,102,241,0.05); }
-  tbody td { padding: 10px 12px; font-size: 13px; vertical-align: middle; }
-  .rank { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
-  .rank-1 { background: rgba(245,158,11,0.2); color: #f59e0b; }
-  .rank-2 { background: rgba(148,163,184,0.15); color: #94a3b8; }
-  .rank-3 { background: rgba(180,120,60,0.2); color: #cd7f32; }
-  .rank-other { background: rgba(255,255,255,0.05); color: var(--muted); }
-  .bar-cell { display: flex; align-items: center; gap: 8px; }
-  .mini-bar { height: 6px; border-radius: 3px; min-width: 4px; }
-  .visits-num { font-weight: 700; color: var(--text); }
-  .email-text { color: var(--muted); font-size: 12px; }
-  .company-text { color: var(--accent2); font-size: 12px; font-weight: 500; }
-  .date-text { font-size: 12px; color: var(--muted); }
-  .status-pill { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .status-active { background: rgba(16,185,129,0.15); color: var(--green); }
-  .status-inactive { background: rgba(244,63,94,0.1); color: var(--red); }
-  .feat-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-  .feat-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px; white-space: nowrap; }
-  .feat-tracker    { background: rgba(99,102,241,0.15); color: #a5b4fc; }
-  .feat-workspace  { background: rgba(34,211,238,0.12); color: #67e8f9; }
-  .feat-resources  { background: rgba(245,158,11,0.13); color: #fcd34d; }
-  .feat-disclosure { background: rgba(16,185,129,0.13); color: #6ee7b7; }
-  .feat-search     { background: rgba(244,63,94,0.12);  color: #fca5a5; }
-  .feat-comparison { background: rgba(168,85,247,0.13); color: #d8b4fe; }
-  .feat-mcp        { background: rgba(251,146,60,0.13); color: #fdba74; }
-  .feat-other      { background: rgba(148,163,184,0.1); color: #94a3b8; }
-  .use-case-text   { font-size: 11px; color: var(--muted); line-height: 1.5; }
-
-  /* MoM */
-  .mom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 8px; }
-  .mom-cell { background: var(--surface2); border-radius: 8px; padding: 10px 8px; text-align: center; }
-  .mom-cell .month { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .mom-cell .val { font-size: 18px; font-weight: 700; color: #fff; }
-  .mom-cell .delta { font-size: 11px; margin-top: 2px; }
-  .delta-up { color: var(--green); } .delta-down { color: var(--red); } .delta-flat { color: var(--muted); }
-
-  footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 8px; }
-</style>
-</head>
-<body>
-
-<!-- Loading Overlay -->
-<div id="loading-overlay">
-  <div class="spinner"></div>
-  <div class="loading-text">Fetching live data from Gainsight PX…</div>
-  <div class="loading-steps">
-    <span id="loading-step">Connecting to API…</span>
-  </div>
-</div>
-
-<!-- Error Banner -->
-<div id="error-banner"></div>
-
-<header>
-  <div>
-    <h1>Gainsight PX — <span>Live Dashboard</span></h1>
-    <div style="color:var(--muted);font-size:13px;margin-top:2px;">Top Accounts &amp; Users · Excl. internal, grandviewresearch &amp; neoimpact</div>
-  </div>
-  <div class="header-right">
-    <!-- Time range selector -->
-    <div class="range-selector">
-      <button class="range-btn" data-range="1w" onclick="setRange('1w')">Last Week</button>
-      <button class="range-btn" data-range="1m" onclick="setRange('1m')">Last Month</button>
-      <button class="range-btn" data-range="3m" onclick="setRange('3m')">3 Months</button>
-      <button class="range-btn active" data-range="6m" onclick="setRange('6m')">6 Months</button>
-    </div>
-    <div class="live-dot loading" id="live-dot"></div>
-    <span id="last-updated" style="color:var(--muted);font-size:12px;">Loading…</span>
-    <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard(false)" disabled>↻ Refresh</button>
-    <button class="refresh-btn" id="force-refresh-btn" onclick="loadDashboard(true)" disabled style="background:rgba(244,63,94,0.1);border-color:rgba(244,63,94,0.3);color:#fca5a5;">⟳ Force Refresh</button>
-    <div class="badge" id="range-badge">Live Data</div>
-  </div>
-</header>
-
-<div class="container">
-
-  <!-- KPI Row -->
-  <div class="kpi-grid">
-    <div class="kpi-card blue">
-      <div class="kpi-icon">🏢</div>
-      <div class="kpi-label">Top Account</div>
-      <div class="kpi-value" style="font-size:20px;margin-top:4px;" id="kpi-top-account"><div class="skeleton" style="width:120px;height:20px;"></div></div>
-      <div class="kpi-sub" id="kpi-top-account-sub"><div class="skeleton" style="width:160px;height:12px;margin-top:4px;"></div></div>
-    </div>
-    <div class="kpi-card cyan">
-      <div class="kpi-icon">👤</div>
-      <div class="kpi-label">Top User</div>
-      <div class="kpi-value" style="font-size:20px;margin-top:4px;" id="kpi-top-user"><div class="skeleton" style="width:120px;height:20px;"></div></div>
-      <div class="kpi-sub" id="kpi-top-user-sub"><div class="skeleton" style="width:160px;height:12px;margin-top:4px;"></div></div>
-    </div>
-    <div class="kpi-card amber">
-      <div class="kpi-icon">📊</div>
-      <div class="kpi-label" id="kpi-active-label">Active Users</div>
-      <div class="kpi-value" id="kpi-user-count"><div class="skeleton" style="width:60px;height:32px;"></div></div>
-      <div class="kpi-sub" id="kpi-active-sub">Active in selected range</div>
-    </div>
-    <div class="kpi-card green">
-      <div class="kpi-icon">🆕</div>
-      <div class="kpi-label">New Sign-ups</div>
-      <div class="kpi-value" id="kpi-signups"><div class="skeleton" style="width:60px;height:32px;"></div></div>
-      <div class="kpi-sub" id="kpi-signups-sub">Past 6 months</div>
-    </div>
-  </div>
-
-  <!-- Top Accounts -->
-  <div class="section-title" id="accounts-title">Top 10 Accounts by Total Visits <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="accounts-range-note">· Last 6 Months · excl. grandviewresearch, neoimpact &amp; test accounts</span></div>
-  <div class="row row-65-35">
-    <div class="card">
-      <div class="card-title">Account Rankings <span class="tag" id="acct-rank-tag">by total user visits · 6 months</span></div>
-      <table>
-        <thead><tr><th>#</th><th>Account</th><th>Sector</th><th>Users</th><th>Total Visits</th><th>Top Features</th><th>Last Seen</th></tr></thead>
-        <tbody id="accounts-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-title">Visit Distribution</div>
-      <div class="chart-wrap" style="height:320px;"><canvas id="accountsBarChart"></canvas></div>
-    </div>
-  </div>
-
-  <!-- Top Users -->
-  <div class="section-title" style="margin-top:8px;">Top 10 Users <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="users-range-note">· Last 6 Months · excl. @manifestclimate @grandviewresearch @neoimpact</span></div>
-  <div class="row row-65-35">
-    <div class="card">
-      <div class="card-title">User Rankings <span class="tag" id="user-rank-tag">by visit count · 6 months</span></div>
-      <table>
-        <thead><tr><th>#</th><th>Name</th><th>Company</th><th>Features Used</th><th>Use Cases</th><th>Visits</th><th>Last Seen</th></tr></thead>
-        <tbody id="users-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-title">Visit Share by User</div>
-      <div class="chart-wrap" style="height:320px;display:flex;align-items:center;justify-content:center;"><canvas id="usersDoughnut"></canvas></div>
-    </div>
-  </div>
-
-  <!-- Feature Usage -->
-  <div class="section-title" style="margin-top:8px;">Feature Usage Breakdown <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="feat-range-note">· Last 6 Months</span></div>
-  <div class="row row-2">
-    <div class="card">
-      <div class="card-title">Active Users per Feature <span class="tag">by role access, active users in range</span></div>
-      <div class="chart-wrap" style="height:280px;"><canvas id="featureBarChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Feature Mix — Top Accounts <span class="tag">by user role composition</span></div>
-      <div class="chart-wrap" style="height:280px;"><canvas id="featureAccountRadar"></canvas></div>
-    </div>
-  </div>
-
-  <!-- MoM Section -->
-  <div class="section-title" style="margin-top:8px;" id="mom-section-title">Month-over-Month Trends <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="mom-range-note">· Last 6 Months</span></div>
-  <div class="row row-2">
-    <div class="card">
-      <div class="card-title">New User Sign-ups per Month</div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="newUsersLine"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Active Users per Month <span class="tag">by last-seen date</span></div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="activeUsersLine"></canvas></div>
-    </div>
-  </div>
-  <div class="row row-2">
-    <div class="card">
-      <div class="card-title">New Accounts per Month</div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="newAccountsLine"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Active Accounts per Month <span class="tag">by last-seen date</span></div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="activeAccountsLine"></canvas></div>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:28px;">
-    <div class="card-title">New User Sign-ups — Monthly Breakdown</div>
-    <div class="mom-grid" id="momGrid"></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:8px;">Based on signUpDate. ▲ = higher than prior month.</div>
-  </div>
-
-</div>
-
-<footer id="footer">Gainsight PX · Live data · Excl. manifestclimate, grandviewresearch, neoimpact &amp; test accounts</footer>
-
-<script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
-const PROXY_URL = '/.netlify/functions/gainsight-proxy';
-const EXCLUDE_DOMAINS  = ['manifestclimate', 'grandviewresearch', 'neoimpact'];
-const EXCLUDE_ACCT_NAMES = ['akshay testing', 'archana testing'];
-
-// Time range options
-const RANGE_MS = {
-  '1w':  7  * 24 * 60 * 60 * 1000,
-  '1m':  30 * 24 * 60 * 60 * 1000,
-  '3m':  90 * 24 * 60 * 60 * 1000,
-  '6m': 180 * 24 * 60 * 60 * 1000,
-};
-const RANGE_LABELS = {
-  '1w': 'Last 7 Days',
-  '1m': 'Last 30 Days',
-  '3m': 'Last 3 Months',
-  '6m': 'Last 6 Months',
-};
-let currentRange = '6m';
-let rawData = null; // stored after API fetch — reused when range changes without re-fetching
-
-// ─── PALETTE ─────────────────────────────────────────────────────────────────
-const PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
-
-// ─── CHART INSTANCES ─────────────────────────────────────────────────────────
-let charts = {};
-function destroyCharts() { Object.values(charts).forEach(c => c && c.destroy()); charts = {}; }
-
-// ─── FEATURE HELPERS ─────────────────────────────────────────────────────────
-const FEAT_CLASS = {
-  'Tracker':'feat-tracker','Workspace':'feat-workspace','Resources':'feat-resources',
-  'Disclosure Library':'feat-disclosure','Disclosure Details':'feat-disclosure',
-  'Disclosure Index':'feat-disclosure','Disclosure Search':'feat-search',
-  'Comparison Tool':'feat-comparison','MCP / API':'feat-mcp',
-  'Climate Actions':'feat-other','Climate Profile':'feat-other','Home / Overview':'feat-other',
-};
-const PAGE_TO_FEATURE = {
-  'View Page - Home':'Home / Overview','View Page - Workspace V2':'Workspace',
-  'View Page - Tracker Data View':'Tracker','View Page - Tracker Dashboard':'Tracker',
-  'View Page - Select Standard(s)':'Tracker','View Page - Summary':'Tracker',
-  'View Page - All Disclosures':'Disclosure Library','View Page - Disclosure Details':'Disclosure Library',
-  'View Page - Disclosure Search':'Disclosure Search','View Page - Disclosure Index':'Disclosure Index',
-  'View Page - Comparison View':'Comparison Tool','View Page - MCP Documentation':'MCP / API',
-  'View Page - MCP Secreat Keys':'MCP / API','View Page - Climate Actions':'Climate Actions',
-  'View Page - Climate Profile':'Climate Profile','Tracker Reference':'Tracker',
-  'MCP Documentation tab select':'MCP / API','Disclosure clickthrough rate':'Disclosure Library',
-};
-function featTags(feats) {
-  return `<div class="feat-tags">${feats.map(f=>`<span class="feat-tag ${FEAT_CLASS[f]||'feat-other'}">${f}</span>`).join('')}</div>`;
-}
-function inferFeatures(user) {
-  const role = (user.role||'').toLowerCase();
-  const feats = [];
-  if (role.includes('workspace')) feats.push('Workspace');
-  if (role.includes('tracker'))   feats.push('Tracker');
-  if (role.includes('resources')) feats.push('Resources');
-  if (role === 'account owner')   feats.push('Workspace','Tracker','Resources');
-  return feats.length ? feats : ['Workspace'];
-}
-function inferUseCase(user) {
-  const attrs = user.customAttributes || {};
-  return attrs.ManifestUsages
-    ? attrs.ManifestUsages.split(',').map(s=>s.trim()).join(' · ')
-    : '—';
-}
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-function setStep(msg) { document.getElementById('loading-step').textContent = msg; }
-
-async function fetchFromProxy(forceRefresh = false) {
-  const url = forceRefresh ? `${PROXY_URL}?refresh=true` : PROXY_URL;
-  setStep('Fetching data from server…');
-  const res = await fetch(url);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Proxy error ${res.status}`);
-  }
-  return res.json();
-}
-
-// ─── RANGE SELECTOR ──────────────────────────────────────────────────────────
-function setRange(range) {
-  currentRange = range;
-  document.querySelectorAll('.range-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.range === range);
-  });
-  if (rawData) {
-    const data = processData(rawData.users, rawData.accounts, range);
-    renderDashboard(data, rawData.acctMap);
-  }
-}
-
-// ─── PROCESS DATA ─────────────────────────────────────────────────────────────
-function isExcluded(email) {
-  const e = (email||'').toLowerCase();
-  return EXCLUDE_DOMAINS.some(d => e.includes(d));
-}
-
-function getMonths(rangeKey) {
-  const numMonths = rangeKey === '1w' ? 2 : rangeKey === '1m' ? 2 : rangeKey === '3m' ? 3 : 6;
-  const now = new Date();
-  const months = [];
-  for (let i = numMonths - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const label = d.toLocaleString('default',{month:'short',year:'2-digit'});
-    months.push({ key, label });
-  }
-  // Ensure current month is present
-  const cur = new Date(now.getFullYear(), now.getMonth(), 1);
-  const curKey = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;
-  if (!months.find(m => m.key === curKey)) {
-    months.push({ key: curKey, label: cur.toLocaleString('default',{month:'short',year:'2-digit'}) });
-  }
-  return months;
-}
-
-function processData(users, accounts, rangeKey) {
-  rangeKey = rangeKey || '6m';
-  const rangeMs = RANGE_MS[rangeKey];
-  const now = Date.now();
-  const rangeStart = now - rangeMs;
-
-  const months    = getMonths(rangeKey);
-  const monthKeys = months.map(m => m.key);
-
-  // Build account map
-  const acctMap = {};
-  accounts.forEach(a => { acctMap[a.id] = a; });
-
-  // All non-excluded users
-  const clean = users.filter(u => !isExcluded(u.email));
-  // Users active within the selected range (last seen in period)
-  const cleanInRange = clean.filter(u => u.lastSeenDate && u.lastSeenDate >= rangeStart);
-
-  // Top users: active in range, ranked by all-time visits
-  const topUsers = [...cleanInRange]
-    .sort((a,b) => (b.numberOfVisits||0) - (a.numberOfVisits||0))
-    .slice(0,10);
-
-  // Top accounts: users active in range, sum their all-time visits
-  const acctVisits = {}, acctUserCount = {};
-  cleanInRange.forEach(u => {
-    if (!u.accountId) return;
-    const acct = acctMap[u.accountId];
-    const name = (acct?.name||'').toLowerCase();
-    if (EXCLUDE_ACCT_NAMES.some(x => name.includes(x))) return;
-    acctVisits[u.accountId]    = (acctVisits[u.accountId]||0) + (u.numberOfVisits||0);
-    acctUserCount[u.accountId] = (acctUserCount[u.accountId]||0) + 1;
-  });
-  const topAccountIds = Object.entries(acctVisits)
-    .sort((a,b) => b[1]-a[1]).slice(0,10).map(([id]) => id);
-
-  // MoM data — only within range
-  const momNewUsers      = Object.fromEntries(monthKeys.map(k => [k,0]));
-  const momActiveUsers   = Object.fromEntries(monthKeys.map(k => [k, new Set()]));
-  const momNewAccounts   = Object.fromEntries(monthKeys.map(k => [k,0]));
-  const momActiveAccounts = Object.fromEntries(monthKeys.map(k => [k, new Set()]));
-
-  clean.forEach(u => {
-    if (u.signUpDate && u.signUpDate >= rangeStart) {
-      const mk = new Date(u.signUpDate).toISOString().slice(0,7);
-      if (momNewUsers[mk] !== undefined) momNewUsers[mk]++;
-    }
-    if (u.lastSeenDate && u.lastSeenDate >= rangeStart) {
-      const mk = new Date(u.lastSeenDate).toISOString().slice(0,7);
-      if (momActiveUsers[mk]) momActiveUsers[mk].add(u.identifyId);
-    }
-  });
-  accounts.forEach(a => {
-    if (a.createDate && a.createDate >= rangeStart) {
-      const mk = new Date(a.createDate).toISOString().slice(0,7);
-      if (momNewAccounts[mk] !== undefined) momNewAccounts[mk]++;
-    }
-    if (a.lastSeenDate && a.lastSeenDate >= rangeStart) {
-      const mk = new Date(a.lastSeenDate).toISOString().slice(0,7);
-      if (momActiveAccounts[mk]) momActiveAccounts[mk].add(a.id);
-    }
-  });
-
-  // ── Feature usage: derived from user role fields ──
-  // Count how many active users in range have access to each feature
-  const globalFeatCounts = {};
-  // Per-account feature breakdown (for radar chart)
-  const acctEventFeats = {};
-  const userEventFeats = {};
-
-  cleanInRange.forEach(u => {
-    const feats = inferFeatures(u);
-    // Global feature counts (unique user per feature)
-    feats.forEach(f => {
-      globalFeatCounts[f] = (globalFeatCounts[f]||0) + 1;
-    });
-    // Account-level breakdown
-    if (u.accountId) {
-      acctEventFeats[u.accountId] = acctEventFeats[u.accountId] || {};
-      feats.forEach(f => {
-        acctEventFeats[u.accountId][f] = (acctEventFeats[u.accountId][f]||0) + 1;
-      });
-    }
-    // User-level (for top user feature display)
-    if (u.identifyId) {
-      userEventFeats[u.identifyId] = userEventFeats[u.identifyId] || {};
-      feats.forEach(f => {
-        userEventFeats[u.identifyId][f] = (userEventFeats[u.identifyId][f]||0) + 1;
-      });
-    }
-  });
-
-  // New sign-ups in range
-  const newSignups = clean.filter(u => u.signUpDate && u.signUpDate >= rangeStart).length;
-
-  return {
-    topUsers, topAccountIds, acctMap, acctVisits, acctUserCount,
-    months, monthKeys, clean, cleanInRange, newSignups,
-    momNewUsers,
-    momActiveUsers:   Object.fromEntries(Object.entries(momActiveUsers).map(([k,v])   => [k,v.size])),
-    momNewAccounts,
-    momActiveAccounts: Object.fromEntries(Object.entries(momActiveAccounts).map(([k,v]) => [k,v.size])),
-    acctEventFeats, userEventFeats, globalFeatCounts,
-    rangeKey, rangeStart,
-  };
-}
-
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function fmt(ts) { return ts ? new Date(ts).toISOString().slice(0,10) : 'N/A'; }
-function isRecent(ts, rangeMs) {
-  // "Active" means seen within the current range window
-  return ts && ts >= (Date.now() - (rangeMs || RANGE_MS[currentRange]));
-}
-
-function renderDashboard(data) {
-  const {
-    topUsers, topAccountIds, acctMap, acctVisits, acctUserCount,
-    months, monthKeys, clean, cleanInRange, newSignups,
-    momNewUsers, momActiveUsers, momNewAccounts, momActiveAccounts,
-    acctEventFeats, userEventFeats, globalFeatCounts,
-    rangeKey, rangeStart,
-  } = data;
-
-  const rangeLabel = RANGE_LABELS[rangeKey] || 'Past 6 Months';
-  const rangeTagShort = rangeKey === '1w' ? '7 days' : rangeKey === '1m' ? '30 days' : rangeKey === '3m' ? '3 months' : '6 months';
-
-  // Update range labels throughout
-  ['accounts-range-note','users-range-note','feat-range-note','mom-range-note'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = `· ${rangeLabel}`;
-  });
-  document.getElementById('acct-rank-tag').textContent = `by total user visits · ${rangeTagShort}`;
-  document.getElementById('user-rank-tag').textContent = `by visit count · ${rangeTagShort}`;
-  document.getElementById('kpi-active-sub').textContent = `Active in ${rangeLabel.toLowerCase()}`;
-  document.getElementById('kpi-signups-sub').textContent = rangeLabel;
-
-  // KPIs
-  const topAcct = acctMap[topAccountIds[0]];
-  const topUser = topUsers[0];
-  document.getElementById('kpi-top-account').textContent = topAcct?.name?.slice(0,18) || '—';
-  document.getElementById('kpi-top-account-sub').textContent =
-    `${acctVisits[topAccountIds[0]]||0} visits · ${acctUserCount[topAccountIds[0]]||0} users`;
-  const topUserName = `${topUser?.firstName||''} ${topUser?.lastName||''}`.trim() || topUser?.email || '—';
-  document.getElementById('kpi-top-user').textContent = topUserName.split(' ').slice(0,2).join(' ');
-  const topUserAcct = acctMap[topUser?.accountId];
-  document.getElementById('kpi-top-user-sub').textContent =
-    `${topUser?.numberOfVisits||0} visits · ${topUserAcct?.name||topUser?.email?.split('@')[1]||''}`;
-  document.getElementById('kpi-user-count').textContent = cleanInRange.length;
-  document.getElementById('kpi-signups').textContent = newSignups;
-
-  // ── Accounts table ──
-  const aTbody = document.getElementById('accounts-tbody');
-  const maxVisitsA = acctVisits[topAccountIds[0]] || 1;
-  aTbody.innerHTML = '';
-  topAccountIds.forEach((aid, i) => {
-    const a = acctMap[aid] || {};
-    const visits = acctVisits[aid] || 0;
-    const users  = acctUserCount[aid] || 0;
-    const lastSeen = fmt(a.lastSeenDate);
-    const active = isRecent(a.lastSeenDate);
-    const pill = active
-      ? '<span class="status-pill status-active">Active</span>'
-      : '<span class="status-pill status-inactive">Older</span>';
-    const barW = Math.round((visits / maxVisitsA) * 100);
-    const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
-    const evFeats = acctEventFeats[aid] || {};
-    let featsList = Object.entries(evFeats).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([f])=>f);
-    if (!featsList.length) featsList = ['Workspace'];
-
-    aTbody.innerHTML += `<tr>
-      <td><span class="rank ${rankClass}">${i+1}</span></td>
-      <td><strong>${a.name||aid.slice(0,12)}</strong><br><span style="font-size:11px;color:var(--muted);">${a.customAttributes?.sector||a.industry||''}</span></td>
-      <td style="color:var(--muted);font-size:12px;">${a.customAttributes?.sector||a.industry||'—'}</td>
-      <td style="text-align:center;"><strong>${users}</strong></td>
-      <td><div class="bar-cell"><div class="mini-bar" style="width:${barW}px;background:linear-gradient(90deg,${PALETTE[i]},${PALETTE[(i+1)%10]});"></div><span class="visits-num">${visits}</span></div></td>
-      <td>${featTags(featsList)}</td>
-      <td>${pill}<span class="date-text" style="margin-left:4px;">${lastSeen}</span></td>
-    </tr>`;
-  });
-
-  // ── Users table ──
-  const uTbody = document.getElementById('users-tbody');
-  const maxVisitsU = topUsers[0]?.numberOfVisits || 1;
-  uTbody.innerHTML = '';
-  topUsers.forEach((u, i) => {
-    const visits = u.numberOfVisits || 0;
-    const barW = Math.round((visits / maxVisitsU) * 100);
-    const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
-    const active = isRecent(u.lastSeenDate);
-    const pill = active
-      ? '<span class="status-pill status-active">Active</span>'
-      : '<span class="status-pill status-inactive">Older</span>';
-    const name = `${u.firstName||''} ${u.lastName||''}`.trim() || u.email;
-    const company = acctMap[u.accountId]?.name || u.email?.split('@')[1] || '—';
-    const evFeats = userEventFeats[u.identifyId] || {};
-    const featsList = Object.entries(evFeats).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([f])=>f);
-    const displayFeats = featsList.length ? featsList : inferFeatures(u);
-    const useCase = inferUseCase(u);
-
-    uTbody.innerHTML += `<tr>
-      <td><span class="rank ${rankClass}">${i+1}</span></td>
-      <td><strong>${name}</strong><br><span class="email-text">${u.email||''}</span></td>
-      <td><span class="company-text">${company}</span></td>
-      <td>${featTags(displayFeats)}</td>
-      <td><span class="use-case-text">${useCase}</span></td>
-      <td><div class="bar-cell"><div class="mini-bar" style="width:${barW}px;background:linear-gradient(90deg,${PALETTE[i]},${PALETTE[(i+2)%10]});"></div><span class="visits-num">${visits}</span></div></td>
-      <td>${pill}<br><span class="date-text">${fmt(u.lastSeenDate)}</span></td>
-    </tr>`;
-  });
-
-  // Destroy existing charts
-  destroyCharts();
-
-  const chartOpts = (extra={}) => ({
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { grid: { color: '#2e3250' }, ticks: { color: '#94a3b8' }, border: { color: '#2e3250' } },
-      y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { size: 11 } }, border: { display: false } }
-    }, ...extra
-  });
-
-  // ── Accounts bar chart ──
-  charts.acctBar = new Chart(document.getElementById('accountsBarChart'), {
-    type: 'bar',
-    data: {
-      labels: topAccountIds.map(id => (acctMap[id]?.name||id.slice(0,12)).slice(0,18)),
-      datasets: [{ label: 'Visits', data: topAccountIds.map(id=>acctVisits[id]||0), backgroundColor: PALETTE, borderRadius: 6, borderSkipped: false }]
-    },
-    options: { ...chartOpts(), indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>' '+c.raw+' visits' } } } }
-  });
-
-  // ── Users doughnut ──
-  charts.userDoughnut = new Chart(document.getElementById('usersDoughnut'), {
-    type: 'doughnut',
-    data: {
-      labels: topUsers.map(u => (u.firstName||u.email?.split('@')[0]||'').slice(0,14)),
-      datasets: [{ data: topUsers.map(u=>u.numberOfVisits||0), backgroundColor: PALETTE, borderColor: '#1a1d27', borderWidth: 2, hoverOffset: 8 }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
-      plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12, padding: 10 } } } }
-  });
-
-  // ── MoM line / bar charts ──
-  const lineD = (color) => ({ borderColor: color, backgroundColor: color+'22', tension: 0.4, pointBackgroundColor: color, pointRadius: 5, pointHoverRadius: 7, fill: true, borderWidth: 2.5 });
-  const monthLabels    = months.map(m => m.label);
-  const newUsersArr    = monthKeys.map(k => momNewUsers[k]||0);
-  const activeUsersArr = monthKeys.map(k => momActiveUsers[k]||0);
-  const newAcctsArr    = monthKeys.map(k => momNewAccounts[k]||0);
-  const activeAcctsArr = monthKeys.map(k => momActiveAccounts[k]||0);
-  const lineScales = {
-    y: { grid:{color:'#2e3250'}, ticks:{color:'#94a3b8',stepSize:1}, beginAtZero:true, border:{color:'#2e3250'} },
-    x: { grid:{display:false}, ticks:{color:'#94a3b8'}, border:{display:false} }
-  };
-
-  charts.newUsers = new Chart(document.getElementById('newUsersLine'), {
-    type: 'line',
-    data: { labels: monthLabels, datasets: [{ label: 'New Sign-ups', data: newUsersArr, ...lineD('#6366f1') }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
-  charts.activeUsers = new Chart(document.getElementById('activeUsersLine'), {
-    type: 'line',
-    data: { labels: monthLabels, datasets: [{ label: 'Active Users', data: activeUsersArr, ...lineD('#22d3ee') }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
-  charts.newAccts = new Chart(document.getElementById('newAccountsLine'), {
-    type: 'bar',
-    data: { labels: monthLabels, datasets: [{ label: 'New Accounts', data: newAcctsArr, backgroundColor:'#f59e0b', borderRadius:6, borderSkipped:false }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
-  charts.activeAccts = new Chart(document.getElementById('activeAccountsLine'), {
-    type: 'bar',
-    data: { labels: monthLabels, datasets: [{ label: 'Active Accounts', data: activeAcctsArr, backgroundColor:'#10b981', borderRadius:6, borderSkipped:false }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
-
-  // ── MoM sign-up heatmap ──
-  const momGrid = document.getElementById('momGrid');
-  momGrid.innerHTML = '';
-  newUsersArr.forEach((val, i) => {
-    const prev = i > 0 ? newUsersArr[i-1] : null;
-    let deltaHtml = '';
-    if (prev !== null) {
-      const diff = val - prev;
-      if (diff > 0)      deltaHtml = `<div class="delta delta-up">▲ ${diff}</div>`;
-      else if (diff < 0) deltaHtml = `<div class="delta delta-down">▼ ${Math.abs(diff)}</div>`;
-      else               deltaHtml = `<div class="delta delta-flat">— 0</div>`;
-    }
-    momGrid.innerHTML += `<div class="mom-cell"><div class="month">${months[i]?.label||''}</div><div class="val">${val}</div>${deltaHtml}</div>`;
-  });
-
-  // ── Feature bar chart (users per feature) ──
-  const featOrder = ['Workspace','Tracker','Resources','Disclosure Library','Disclosure Search','Comparison Tool','MCP / API'];
-  const featEntries = featOrder
-    .map(f => [f, globalFeatCounts[f]||0])
-    .filter(([,c]) => c > 0)
-    .sort((a,b) => b[1]-a[1]);
-
-  const featColors = ['#22d3ee','#6366f1','#f59e0b','#10b981','#f43f5e','#a78bfa','#fb923c'];
-  charts.featBar = new Chart(document.getElementById('featureBarChart'), {
-    type: 'bar',
-    data: {
-      labels: featEntries.map(([f]) => f),
-      datasets: [{ label:'Active Users', data: featEntries.map(([,c]) => c), backgroundColor: featColors, borderRadius:6, borderSkipped:false }]
-    },
-    options: {
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c => ` ${c.raw} active users` } } },
-      scales: { x:{grid:{color:'#2e3250'},ticks:{color:'#94a3b8'},border:{color:'#2e3250'}}, y:{grid:{display:false},ticks:{color:'#e2e8f0',font:{size:11}},border:{display:false}} }
-    }
-  });
-
-  // ── Radar chart: top accounts by feature mix ──
-  const RADAR_FEATS = ['Tracker','Workspace','Resources','Disclosure Library','Comparison Tool','MCP / API'];
-  // Pick top accounts that have feature data
-  const radarAccts = topAccountIds.filter(id => Object.keys(acctEventFeats[id]||{}).length > 0).slice(0,4);
-  const radarColors = ['#6366f1','#22d3ee','#10b981','#f59e0b'];
-  charts.radar = new Chart(document.getElementById('featureAccountRadar'), {
-    type: 'radar',
-    data: {
-      labels: RADAR_FEATS,
-      datasets: radarAccts.length
-        ? radarAccts.map((id,i) => ({
-            label: (acctMap[id]?.name||id.slice(0,12)).slice(0,22),
-            data: RADAR_FEATS.map(f => (acctEventFeats[id]||{})[f]||0),
-            borderColor: radarColors[i], backgroundColor: radarColors[i]+'22',
-            pointBackgroundColor: radarColors[i], borderWidth: 2, pointRadius: 4,
-          }))
-        : [{ label:'No data', data:[0,0,0,0,0,0], borderColor:'#2e3250', backgroundColor:'transparent' }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } } },
-      scales: { r: { grid:{color:'#2e3250'}, ticks:{color:'#94a3b8',backdropColor:'transparent',stepSize:1}, pointLabels:{color:'#e2e8f0',font:{size:11}}, angleLines:{color:'#2e3250'} } }
-    }
-  });
-}
-
-// ─── MAIN LOAD ────────────────────────────────────────────────────────────────
-async function loadDashboard(forceRefresh = false) {
-  const overlay   = document.getElementById('loading-overlay');
-  const dot       = document.getElementById('live-dot');
-  const btn       = document.getElementById('refresh-btn');
-  const forceBtn  = document.getElementById('force-refresh-btn');
-  const errBanner = document.getElementById('error-banner');
-
-  overlay.classList.remove('hidden');
-  dot.className = 'live-dot loading';
-  btn.disabled = true;
-  forceBtn.disabled = true;
-  errBanner.classList.remove('visible');
-  document.getElementById('last-updated').textContent = 'Loading…';
-
-  try {
-    const result = await fetchFromProxy(forceRefresh);
-    const { users, accounts, cached, cacheAgeMin, nextRefreshMin, fetchedAt, stale } = result;
-
-    setStep('Processing data…');
-
-    // Build account map and store raw data for range-switching
-    const acctMap = {};
-    accounts.forEach(a => { acctMap[a.id] = a; });
-    rawData = { users, accounts, acctMap };
-
-    const data = processData(users, accounts, currentRange);
-    renderDashboard(data);
-
-    const fetchedTime = fetchedAt ? new Date(fetchedAt).toLocaleTimeString() : '—';
-    if (cached) {
-      document.getElementById('last-updated').textContent =
-        `${stale ? '⚠ Stale cache' : 'Cached'} · fetched ${cacheAgeMin}m ago · refreshes in ~${nextRefreshMin}m`;
-    } else {
-      document.getElementById('last-updated').textContent =
-        `Live · fetched at ${fetchedTime} · refreshes in ~60m`;
-    }
-    document.getElementById('footer').textContent =
-      `Gainsight PX · ${cached ? 'Cached' : 'Live'} data · Last API fetch ${fetchedTime} · Excl. manifestclimate, grandviewresearch, neoimpact & test accounts`;
-
-    dot.className = 'live-dot';
-    overlay.classList.add('hidden');
-    btn.disabled = false;
-    forceBtn.disabled = false;
-
-  } catch (err) {
-    overlay.classList.add('hidden');
-    dot.className = 'live-dot error';
-    btn.disabled = false;
-    forceBtn.disabled = false;
-    document.getElementById('last-updated').textContent = 'Error loading data';
-    errBanner.innerHTML = `<strong>⚠️ Error:</strong> ${err.message}`;
-    errBanner.classList.add('visible');
-    console.error('Dashboard load error:', err);
-  }
-}
-
-// Start on load
-loadDashboard();
-</script>
-</body>
-</html>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
