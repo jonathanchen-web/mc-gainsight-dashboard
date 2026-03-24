@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gainsight PX â Live Dashboard</title>
+<title>Gainsight PX — Live Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
@@ -157,9 +157,9 @@
 <!-- Loading Overlay -->
 <div id="loading-overlay">
   <div class="spinner"></div>
-  <div class="loading-text">Fetching live data from Gainsight PXâ¦</div>
+  <div class="loading-text">Fetching live data from Gainsight PX…</div>
   <div class="loading-steps">
-    <span id="loading-step">Connecting to APIâ¦</span>
+    <span id="loading-step">Connecting to API…</span>
   </div>
 </div>
 
@@ -168,8 +168,8 @@
 
 <header>
   <div>
-    <h1>Gainsight PX â <span>Live Dashboard</span></h1>
-    <div style="color:var(--muted);font-size:13px;margin-top:2px;">Top Accounts &amp; Users Â· Excl. internal, grandviewresearch &amp; neoimpact</div>
+    <h1>Gainsight PX — <span>Live Dashboard</span></h1>
+    <div style="color:var(--muted);font-size:13px;margin-top:2px;">Top Accounts &amp; Users · Excl. internal, grandviewresearch &amp; neoimpact</div>
   </div>
   <div class="header-right">
     <!-- Time range selector -->
@@ -180,9 +180,9 @@
       <button class="range-btn active" data-range="6m" onclick="setRange('6m')">6 Months</button>
     </div>
     <div class="live-dot loading" id="live-dot"></div>
-    <span id="last-updated" style="color:var(--muted);font-size:12px;">Loadingâ¦</span>
-    <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard(false)" disabled>â» Refresh</button>
-    <button class="refresh-btn" id="force-refresh-btn" onclick="loadDashboard(true)" disabled style="background:rgba(244,63,94,0.1);border-color:rgba(244,63,94,0.3);color:#fca5a5;">â³ Force Refresh</button>
+    <span id="last-updated" style="color:var(--muted);font-size:12px;">Loading…</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard(false)" disabled>↻ Refresh</button>
+    <button class="refresh-btn" id="force-refresh-btn" onclick="loadDashboard(true)" disabled style="background:rgba(244,63,94,0.1);border-color:rgba(244,63,94,0.3);color:#fca5a5;">⟳ Force Refresh</button>
     <div class="badge" id="range-badge">Live Data</div>
   </div>
 </header>
@@ -192,25 +192,25 @@
   <!-- KPI Row -->
   <div class="kpi-grid">
     <div class="kpi-card blue">
-      <div class="kpi-icon">ð¢</div>
+      <div class="kpi-icon">🏢</div>
       <div class="kpi-label">Top Account</div>
       <div class="kpi-value" style="font-size:20px;margin-top:4px;" id="kpi-top-account"><div class="skeleton" style="width:120px;height:20px;"></div></div>
       <div class="kpi-sub" id="kpi-top-account-sub"><div class="skeleton" style="width:160px;height:12px;margin-top:4px;"></div></div>
     </div>
     <div class="kpi-card cyan">
-      <div class="kpi-icon">ð¤</div>
+      <div class="kpi-icon">👤</div>
       <div class="kpi-label">Top User</div>
       <div class="kpi-value" style="font-size:20px;margin-top:4px;" id="kpi-top-user"><div class="skeleton" style="width:120px;height:20px;"></div></div>
       <div class="kpi-sub" id="kpi-top-user-sub"><div class="skeleton" style="width:160px;height:12px;margin-top:4px;"></div></div>
     </div>
     <div class="kpi-card amber">
-      <div class="kpi-icon">ð</div>
+      <div class="kpi-icon">📊</div>
       <div class="kpi-label" id="kpi-active-label">Active Users</div>
       <div class="kpi-value" id="kpi-user-count"><div class="skeleton" style="width:60px;height:32px;"></div></div>
       <div class="kpi-sub" id="kpi-active-sub">Active in selected range</div>
     </div>
     <div class="kpi-card green">
-      <div class="kpi-icon">ð</div>
+      <div class="kpi-icon">🆕</div>
       <div class="kpi-label">New Sign-ups</div>
       <div class="kpi-value" id="kpi-signups"><div class="skeleton" style="width:60px;height:32px;"></div></div>
       <div class="kpi-sub" id="kpi-signups-sub">Past 6 months</div>
@@ -218,13 +218,13 @@
   </div>
 
   <!-- Top Accounts -->
-  <div class="section-title" id="accounts-title">Top 10 Accounts by Total Visits <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="accounts-range-note">Â· Last 6 Months Â· excl. grandviewresearch, neoimpact &amp; test accounts</span></div>
+  <div class="section-title" id="accounts-title">Top 10 Accounts by Total Visits <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="accounts-range-note">· Last 6 Months · excl. grandviewresearch, neoimpact &amp; test accounts</span></div>
   <div class="row row-65-35">
     <div class="card">
-      <div class="card-title">Account Rankings <span class="tag" id="acct-rank-tag">by total user visits Â· 6 months</span></div>
+      <div class="card-title">Account Rankings <span class="tag" id="acct-rank-tag">by total user visits · 6 months</span></div>
       <table>
         <thead><tr><th>#</th><th>Account</th><th>Sector</th><th>Users</th><th>Total Visits</th><th>Top Features</th><th>Last Seen</th></tr></thead>
-        <tbody id="accounts-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loadingâ¦</td></tr></tbody>
+        <tbody id="accounts-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody>
       </table>
     </div>
     <div class="card">
@@ -234,13 +234,13 @@
   </div>
 
   <!-- Top Users -->
-  <div class="section-title" style="margin-top:8px;">Top 10 Users <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="users-range-note">Â· Last 6 Months Â· excl. @manifestclimate @grandviewresearch @neoimpact</span></div>
+  <div class="section-title" style="margin-top:8px;">Top 10 Users <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="users-range-note">· Last 6 Months · excl. @manifestclimate @grandviewresearch @neoimpact</span></div>
   <div class="row row-65-35">
     <div class="card">
-      <div class="card-title">User Rankings <span class="tag" id="user-rank-tag">by visit count Â· 6 months</span></div>
+      <div class="card-title">User Rankings <span class="tag" id="user-rank-tag">by visit count · 6 months</span></div>
       <table>
         <thead><tr><th>#</th><th>Name</th><th>Company</th><th>Features Used</th><th>Use Cases</th><th>Visits</th><th>Last Seen</th></tr></thead>
-        <tbody id="users-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loadingâ¦</td></tr></tbody>
+        <tbody id="users-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody>
       </table>
     </div>
     <div class="card">
@@ -250,20 +250,20 @@
   </div>
 
   <!-- Feature Usage -->
-  <div class="section-title" style="margin-top:8px;">Feature Usage Breakdown <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="feat-range-note">Â· Last 6 Months</span></div>
+  <div class="section-title" style="margin-top:8px;">Feature Usage Breakdown <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="feat-range-note">· Last 6 Months</span></div>
   <div class="row row-2">
     <div class="card">
       <div class="card-title">Active Users per Feature <span class="tag">by role access, active users in range</span></div>
       <div class="chart-wrap" style="height:280px;"><canvas id="featureBarChart"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-title">Feature Mix â Top Accounts <span class="tag">by user role composition</span></div>
+      <div class="card-title">Feature Mix — Top Accounts <span class="tag">by user role composition</span></div>
       <div class="chart-wrap" style="height:280px;"><canvas id="featureAccountRadar"></canvas></div>
     </div>
   </div>
 
   <!-- MoM Section -->
-  <div class="section-title" style="margin-top:8px;" id="mom-section-title">Month-over-Month Trends <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="mom-range-note">Â· Last 6 Months</span></div>
+  <div class="section-title" style="margin-top:8px;" id="mom-section-title">Month-over-Month Trends <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="mom-range-note">· Last 6 Months</span></div>
   <div class="row row-2">
     <div class="card">
       <div class="card-title">New User Sign-ups per Month</div>
@@ -286,17 +286,17 @@
   </div>
 
   <div class="card" style="margin-bottom:28px;">
-    <div class="card-title">New User Sign-ups â Monthly Breakdown</div>
+    <div class="card-title">New User Sign-ups — Monthly Breakdown</div>
     <div class="mom-grid" id="momGrid"></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:8px;">Based on signUpDate. â² = higher than prior month.</div>
+    <div style="color:var(--muted);font-size:12px;margin-top:8px;">Based on signUpDate. ▲ = higher than prior month.</div>
   </div>
 
 </div>
 
-<footer id="footer">Gainsight PX Â· Live data Â· Excl. manifestclimate, grandviewresearch, neoimpact &amp; test accounts</footer>
+<footer id="footer">Gainsight PX · Live data · Excl. manifestclimate, grandviewresearch, neoimpact &amp; test accounts</footer>
 
 <script>
-// âââ CONFIG âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
 const PROXY_URL = '/.netlify/functions/gainsight-proxy';
 const EXCLUDE_DOMAINS  = ['manifestclimate', 'grandviewresearch', 'neoimpact'];
 const EXCLUDE_ACCT_NAMES = ['akshay testing', 'archana testing'];
@@ -315,16 +315,16 @@ const RANGE_LABELS = {
   '6m': 'Last 6 Months',
 };
 let currentRange = '6m';
-let rawData = null; // stored after API fetch â reused when range changes without re-fetching
+let rawData = null; // stored after API fetch — reused when range changes without re-fetching
 
-// âââ PALETTE âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── PALETTE ─────────────────────────────────────────────────────────────────
 const PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
 
-// âââ CHART INSTANCES âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── CHART INSTANCES ─────────────────────────────────────────────────────────
 let charts = {};
 function destroyCharts() { Object.values(charts).forEach(c => c && c.destroy()); charts = {}; }
 
-// âââ FEATURE HELPERS âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── FEATURE HELPERS ─────────────────────────────────────────────────────────
 const FEAT_CLASS = {
   'Tracker':'feat-tracker','Workspace':'feat-workspace','Resources':'feat-resources',
   'Disclosure Library':'feat-disclosure','Disclosure Details':'feat-disclosure',
@@ -358,16 +358,16 @@ function inferFeatures(user) {
 function inferUseCase(user) {
   const attrs = user.customAttributes || {};
   return attrs.ManifestUsages
-    ? attrs.ManifestUsages.split(',').map(s=>s.trim()).join(' Â· ')
-    : 'â';
+    ? attrs.ManifestUsages.split(',').map(s=>s.trim()).join(' · ')
+    : '—';
 }
 
-// âââ HELPERS âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 function setStep(msg) { document.getElementById('loading-step').textContent = msg; }
 
 async function fetchFromProxy(forceRefresh = false) {
   const url = forceRefresh ? `${PROXY_URL}?refresh=true` : PROXY_URL;
-  setStep('Fetching data from serverâ¦');
+  setStep('Fetching data from server…');
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -376,7 +376,7 @@ async function fetchFromProxy(forceRefresh = false) {
   return res.json();
 }
 
-// âââ RANGE SELECTOR ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── RANGE SELECTOR ──────────────────────────────────────────────────────────
 function setRange(range) {
   currentRange = range;
   document.querySelectorAll('.range-btn').forEach(b => {
@@ -388,7 +388,7 @@ function setRange(range) {
   }
 }
 
-// âââ PROCESS DATA âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── PROCESS DATA ─────────────────────────────────────────────────────────────
 function isExcluded(email) {
   const e = (email||'').toLowerCase();
   return EXCLUDE_DOMAINS.some(d => e.includes(d));
@@ -449,7 +449,7 @@ function processData(users, accounts, rangeKey) {
   const topAccountIds = Object.entries(acctVisits)
     .sort((a,b) => b[1]-a[1]).slice(0,10).map(([id]) => id);
 
-  // MoM data â only within range
+  // MoM data — only within range
   const momNewUsers      = Object.fromEntries(monthKeys.map(k => [k,0]));
   const momActiveUsers   = Object.fromEntries(monthKeys.map(k => [k, new Set()]));
   const momNewAccounts   = Object.fromEntries(monthKeys.map(k => [k,0]));
@@ -476,7 +476,7 @@ function processData(users, accounts, rangeKey) {
     }
   });
 
-  // ââ Feature usage: derived from user role fields ââ
+  // ── Feature usage: derived from user role fields ──
   // Count how many active users in range have access to each feature
   const globalFeatCounts = {};
   // Per-account feature breakdown (for radar chart)
@@ -520,7 +520,7 @@ function processData(users, accounts, rangeKey) {
   };
 }
 
-// âââ RENDER âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── RENDER ───────────────────────────────────────────────────────────────────
 function fmt(ts) { return ts ? new Date(ts).toISOString().slice(0,10) : 'N/A'; }
 function isRecent(ts, rangeMs) {
   // "Active" means seen within the current range window
@@ -542,28 +542,28 @@ function renderDashboard(data) {
   // Update range labels throughout
   ['accounts-range-note','users-range-note','feat-range-note','mom-range-note'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.textContent = `Â· ${rangeLabel}`;
+    if (el) el.textContent = `· ${rangeLabel}`;
   });
-  document.getElementById('acct-rank-tag').textContent = `by total user visits Â· ${rangeTagShort}`;
-  document.getElementById('user-rank-tag').textContent = `by visit count Â· ${rangeTagShort}`;
+  document.getElementById('acct-rank-tag').textContent = `by total user visits · ${rangeTagShort}`;
+  document.getElementById('user-rank-tag').textContent = `by visit count · ${rangeTagShort}`;
   document.getElementById('kpi-active-sub').textContent = `Active in ${rangeLabel.toLowerCase()}`;
   document.getElementById('kpi-signups-sub').textContent = rangeLabel;
 
   // KPIs
   const topAcct = acctMap[topAccountIds[0]];
   const topUser = topUsers[0];
-  document.getElementById('kpi-top-account').textContent = topAcct?.name?.slice(0,18) || 'â';
+  document.getElementById('kpi-top-account').textContent = topAcct?.name?.slice(0,18) || '—';
   document.getElementById('kpi-top-account-sub').textContent =
-    `${acctVisits[topAccountIds[0]]||0} visits Â· ${acctUserCount[topAccountIds[0]]||0} users`;
-  const topUserName = `${topUser?.firstName||''} ${topUser?.lastName||''}`.trim() || topUser?.email || 'â';
+    `${acctVisits[topAccountIds[0]]||0} visits · ${acctUserCount[topAccountIds[0]]||0} users`;
+  const topUserName = `${topUser?.firstName||''} ${topUser?.lastName||''}`.trim() || topUser?.email || '—';
   document.getElementById('kpi-top-user').textContent = topUserName.split(' ').slice(0,2).join(' ');
   const topUserAcct = acctMap[topUser?.accountId];
   document.getElementById('kpi-top-user-sub').textContent =
-    `${topUser?.numberOfVisits||0} visits Â· ${topUserAcct?.name||topUser?.email?.split('@')[1]||''}`;
+    `${topUser?.numberOfVisits||0} visits · ${topUserAcct?.name||topUser?.email?.split('@')[1]||''}`;
   document.getElementById('kpi-user-count').textContent = cleanInRange.length;
   document.getElementById('kpi-signups').textContent = newSignups;
 
-  // ââ Accounts table ââ
+  // ── Accounts table ──
   const aTbody = document.getElementById('accounts-tbody');
   const maxVisitsA = acctVisits[topAccountIds[0]] || 1;
   aTbody.innerHTML = '';
@@ -585,7 +585,7 @@ function renderDashboard(data) {
     aTbody.innerHTML += `<tr>
       <td><span class="rank ${rankClass}">${i+1}</span></td>
       <td><strong>${a.name||aid.slice(0,12)}</strong><br><span style="font-size:11px;color:var(--muted);">${a.customAttributes?.sector||a.industry||''}</span></td>
-      <td style="color:var(--muted);font-size:12px;">${a.customAttributes?.sector||a.industry||'â'}</td>
+      <td style="color:var(--muted);font-size:12px;">${a.customAttributes?.sector||a.industry||'—'}</td>
       <td style="text-align:center;"><strong>${users}</strong></td>
       <td><div class="bar-cell"><div class="mini-bar" style="width:${barW}px;background:linear-gradient(90deg,${PALETTE[i]},${PALETTE[(i+1)%10]});"></div><span class="visits-num">${visits}</span></div></td>
       <td>${featTags(featsList)}</td>
@@ -593,7 +593,7 @@ function renderDashboard(data) {
     </tr>`;
   });
 
-  // ââ Users table ââ
+  // ── Users table ──
   const uTbody = document.getElementById('users-tbody');
   const maxVisitsU = topUsers[0]?.numberOfVisits || 1;
   uTbody.innerHTML = '';
@@ -606,7 +606,7 @@ function renderDashboard(data) {
       ? '<span class="status-pill status-active">Active</span>'
       : '<span class="status-pill status-inactive">Older</span>';
     const name = `${u.firstName||''} ${u.lastName||''}`.trim() || u.email;
-    const company = acctMap[u.accountId]?.name || u.email?.split('@')[1] || 'â';
+    const company = acctMap[u.accountId]?.name || u.email?.split('@')[1] || '—';
     const evFeats = userEventFeats[u.identifyId] || {};
     const featsList = Object.entries(evFeats).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([f])=>f);
     const displayFeats = featsList.length ? featsList : inferFeatures(u);
@@ -635,7 +635,7 @@ function renderDashboard(data) {
     }, ...extra
   });
 
-  // ââ Accounts bar chart ââ
+  // ── Accounts bar chart ──
   charts.acctBar = new Chart(document.getElementById('accountsBarChart'), {
     type: 'bar',
     data: {
@@ -645,7 +645,7 @@ function renderDashboard(data) {
     options: { ...chartOpts(), indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>' '+c.raw+' visits' } } } }
   });
 
-  // ââ Users doughnut ââ
+  // ── Users doughnut ──
   charts.userDoughnut = new Chart(document.getElementById('usersDoughnut'), {
     type: 'doughnut',
     data: {
@@ -656,7 +656,7 @@ function renderDashboard(data) {
       plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12, padding: 10 } } } }
   });
 
-  // ââ MoM line / bar charts ââ
+  // ── MoM line / bar charts ──
   const lineD = (color) => ({ borderColor: color, backgroundColor: color+'22', tension: 0.4, pointBackgroundColor: color, pointRadius: 5, pointHoverRadius: 7, fill: true, borderWidth: 2.5 });
   const monthLabels    = months.map(m => m.label);
   const newUsersArr    = monthKeys.map(k => momNewUsers[k]||0);
@@ -689,7 +689,7 @@ function renderDashboard(data) {
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
   });
 
-  // ââ MoM sign-up heatmap ââ
+  // ── MoM sign-up heatmap ──
   const momGrid = document.getElementById('momGrid');
   momGrid.innerHTML = '';
   newUsersArr.forEach((val, i) => {
@@ -697,14 +697,14 @@ function renderDashboard(data) {
     let deltaHtml = '';
     if (prev !== null) {
       const diff = val - prev;
-      if (diff > 0)      deltaHtml = `<div class="delta delta-up">â² ${diff}</div>`;
-      else if (diff < 0) deltaHtml = `<div class="delta delta-down">â¼ ${Math.abs(diff)}</div>`;
-      else               deltaHtml = `<div class="delta delta-flat">â 0</div>`;
+      if (diff > 0)      deltaHtml = `<div class="delta delta-up">▲ ${diff}</div>`;
+      else if (diff < 0) deltaHtml = `<div class="delta delta-down">▼ ${Math.abs(diff)}</div>`;
+      else               deltaHtml = `<div class="delta delta-flat">— 0</div>`;
     }
     momGrid.innerHTML += `<div class="mom-cell"><div class="month">${months[i]?.label||''}</div><div class="val">${val}</div>${deltaHtml}</div>`;
   });
 
-  // ââ Feature bar chart (users per feature) ââ
+  // ── Feature bar chart (users per feature) ──
   const featOrder = ['Workspace','Tracker','Resources','Disclosure Library','Disclosure Search','Comparison Tool','MCP / API'];
   const featEntries = featOrder
     .map(f => [f, globalFeatCounts[f]||0])
@@ -725,31 +725,91 @@ function renderDashboard(data) {
     }
   });
 
-  // ââ Radar chart: top accounts by feature mix  RR (½¹ÍÐII}QLôlQÉ­È°]½É­ÍÁ°IÍ½ÕÉÌ°¥Í±½ÍÕÉ1¥ÉÉä°
-½µÁÉ¥Í½¸Q½½°°5
-@¼A$tì(¼¼A¥¬Ñ½À½Õ¹ÑÌÑ¡Ð¡ÙÑÕÉÑ(½¹ÍÐÉÉÑÌôÑ½Á½Õ¹Ñ%Ì¹¥±ÑÈ¡¥ôø=©Ð¹­åÌ¡ÑÙ¹ÑÑÍm¥uññíô¤¹±¹Ñ øÀ¤¹Í±¥ À°Ð¤ì(½¹ÍÐÉÉ
-½±½ÉÌôlØÌØÙÄ°ÈÉÍ°ÄÁäàÄ°ÔåÁtì(¡ÉÑÌ¹ÉÈô¹Ü
-¡ÉÐ¡½Õµ¹Ð¹Ñ±µ¹Ñ	å% ÑÕÉ½Õ¹ÑIÈ¤°ì(ÑåÁèÉÈ°(Ñèì(±±ÌèII}QL°(ÑÍÑÌèÉÉÑÌ¹±¹Ñ (üÉÉÑÌ¹µÀ ¡¥±¤¤ôø¡ì(±°è¡Ñ5Ám¥tü¹¹µññ¥¹Í±¥ À°ÄÈ¤¤¹Í±¥ À°ÈÈ¤°(ÑèII}QL¹µÀ¡ôø¡ÑÙ¹ÑÑÍm¥uññíô¥muñðÀ¤°(½ÉÉ
-½±½ÈèÉÉ
-½±½ÉÍm¥t°­É½Õ¹
-½±½ÈèÉÉ
-½±½ÉÍm¥t¬ÈÈ°(Á½¥¹Ñ	­É½Õ¹
-½±½ÈèÉÉ
-½±½ÉÍm¥t°½ÉÉ]¥Ñ èÈ°Á½¥¹ÑI¥ÕÌèÐ°(ô¤¤(èmì±°è9¼Ñ°ÑélÀ°À°À°À°À°Át°½ÉÉ
-½±½ÈèÉÌÈÔÀ°­É½Õ¹
-½±½ÈèÑÉ¹ÍÁÉ¹Ðõt(ô°(½ÁÑ¥½¹Ìèì(ÉÍÁ½¹Í¥ÙèÑÉÕ°µ¥¹Ñ¥¹ÍÁÑIÑ¥¼è±Í°(Á±Õ¥¹Ìèì±¹èì±±Ìèì½±½ÈèäÑÍà°½á]¥Ñ èÄÈ°½¹ÐéíÍ¥éèÄÅôôôô°(Í±ÌèìÈèìÉ¥éí½±½ÈèÉÌÈÔÀô°Ñ¥­Ìéí½±½ÈèäÑÍà±­É½Á
-½±½ÈèÑÉ¹ÍÁÉ¹Ð±ÍÑÁM¥éèÅô°Á½¥¹Ñ1±Ìéí½±½ÈèÉáÀ±½¹ÐéíÍ¥éèÄÅõô°¹±1¥¹Ìéí½±½ÈèÉÌÈÔÀôôô(ô(ô¤ì)ô((¼¼RRR 5%81=RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR )Íå¹Õ¹Ñ¥½¸±½Í¡½É¡½ÉIÉÍ ô±Í¤ì(½¹ÍÐ½ÙÉ±äô½Õµ¹Ð¹Ñ±µ¹Ñ	å% ±½¥¹µ½ÙÉ±ä¤ì(½¹ÍÐ½Ðô½Õµ¹Ð¹Ñ±µ¹Ñ	å% ±¥Ùµ½Ð¤ì(½¹ÍÐÑ¸ô½Õµ¹Ð¹Ñ±µ¹Ñ	å% ÉÉÍ µÑ¸¤ì(½¹ÍÐ½É	Ñ¸ô½Õµ¹Ð¹Ñ±µ¹Ñ	å% ½ÉµÉÉÍ µÑ¸¤ì(½¹ÍÐÉÉ	¹¹Èô½Õµ¹Ð¹Ñ±µ¹Ñ	å% ÉÉ½Èµ¹¹È¤ì((½ÙÉ±ä¹±ÍÍ1¥ÍÐ¹Éµ½Ù ¡¥¸¤ì(½Ð¹±ÍÍ9µô±¥Ùµ½Ð±½¥¹ì(Ñ¸¹¥Í±ôÑÉÕì(½É	Ñ¸¹¥Í±ôÑÉÕì(ÉÉ	¹¹È¹±ÍÍ1¥ÍÐ¹Éµ½Ù Ù¥Í¥±¤ì(½Õµ¹Ð¹Ñ±µ¹Ñ	å% ±ÍÐµÕÁÑ¤¹ÑáÑ
-½¹Ñ¹Ðô1½¥¹ì((ÑÉäì(½¹ÍÐÉÍÕ±ÐôÝ¥ÐÑ¡É½µAÉ½áä¡½ÉIÉÍ ¤ì(½¹ÍÐìÕÍÉÌ°½Õ¹ÑÌ°¡°¡5¥¸°¹áÑIÉÍ¡5¥¸°Ñ¡Ð°ÍÑ±ôôÉÍÕ±Ðì((ÍÑMÑÀ AÉ½ÍÍ¥¹Ñ¤ì((¼¼	Õ¥±½Õ¹ÐµÀ¹ÍÑ½ÉÉÜÑ½ÈÉ¹µÍÝ¥Ñ¡¥¹(½¹ÍÐÑ5Àôíôì(½Õ¹ÑÌ¹½É ¡ôøìÑ5Ám¹¥tôìô¤ì(ÉÝÑôìÕÍÉÌ°½Õ¹ÑÌ°Ñ5Àôì((½¹ÍÐÑôÁÉ½ÍÍÑ¡ÕÍÉÌ°½Õ¹ÑÌ°ÕÉÉ¹ÑI¹¤ì(É¹ÉÍ¡½É¡Ñ¤ì((½¹ÍÐÑ¡Q¥µôÑ¡Ðü¹ÜÑ¡Ñ¡Ð¤¹Ñ½1½±Q¥µMÑÉ¥¹ ¤èPì(¥¡¡¤ì(½Õµ¹Ð¹Ñ±µ¹Ñ	å% ±ÍÐµÕÁÑ¤¹ÑáÑ
-½¹Ñ¹Ðô(íÍÑ±üjMÑ±¡è
-¡ô
-ÜÑ¡í¡5¥¹õ´¼
-ÜÉÉÍ¡Ì¥¸øí¹áÑIÉÍ¡5¥¹õµì(ô±Íì(½Õµ¹Ð¹Ñ±µ¹Ñ	å% ±ÍÐµÕÁÑ¤¹ÑáÑ
-½¹Ñ¹Ðô(1¥Ù
-ÜÑ¡ÐíÑ¡Q¥µô
-ÜÉÉÍ¡Ì¥¸øØÁµì(ô(½Õµ¹Ð¹Ñ±µ¹Ñ	å% ½½ÑÈ¤¹ÑáÑ
-½¹Ñ¹Ðô(¥¹Í¥¡ÐA`
-Üí¡ü
-¡è1¥ÙôÑ
-Ü1ÍÐA$Ñ íÑ¡Q¥µô
-Üá°¸µ¹¥ÍÑ±¥µÑ°É¹Ù¥ÝÉÍÉ °¹½¥µÁÐÑÍÐ½Õ¹ÑÍì((½Ð¹±ÍÍ9µô±¥Ùµ½Ðì(½ÙÉ±ä¹±ÍÍ1¥ÍÐ¹ ¡¥¸¤ì(Ñ¸¹¥Í±ô±Íì(½É	Ñ¸¹¥Í±ô±Íì((ôÑ ¡ÉÈ¤ì(½ÙÉ±ä¹±ÍÍ1¥ÍÐ¹ ¡¥¸¤ì(½Ð¹±ÍÍ9µô±¥Ùµ½ÐÉÉ½Èì(Ñ¸¹¥Í±ô±Íì(½É	Ñ¸¹¥Í±ô±Íì(½Õµ¹Ð¹Ñ±µ¹Ñ	å% ±ÍÐµÕÁÑ¤¹ÑáÑ
-½¹Ñ¹ÐôÉÉ½È±½¥¹Ñì(ÉÉ	¹¹È¹¥¹¹É!Q50ôñÍÑÉ½¹ûj¾â<ÉÉ½Èèð½ÍÑÉ½¹øíÉÈ¹µÍÍõì(ÉÉ	¹¹È¹±ÍÍ1¥ÍÐ¹ Ù¥Í¥±¤ì(½¹Í½±¹ÉÉ½È Í¡½É±½ÉÉ½Èè°ÉÈ¤ì(ô)ô((¼¼MÑÉÐ½¸±½)±½Í¡½É ¤ì(ð½ÍÉ¥ÁÐø(ð½½äø(ð½¡Ñµ°ø
+  // ── Radar chart: top accounts by feature mix ──
+  const RADAR_FEATS = ['Tracker','Workspace','Resources','Disclosure Library','Comparison Tool','MCP / API'];
+  // Pick top accounts that have feature data
+  const radarAccts = topAccountIds.filter(id => Object.keys(acctEventFeats[id]||{}).length > 0).slice(0,4);
+  const radarColors = ['#6366f1','#22d3ee','#10b981','#f59e0b'];
+  charts.radar = new Chart(document.getElementById('featureAccountRadar'), {
+    type: 'radar',
+    data: {
+      labels: RADAR_FEATS,
+      datasets: radarAccts.length
+        ? radarAccts.map((id,i) => ({
+            label: (acctMap[id]?.name||id.slice(0,12)).slice(0,22),
+            data: RADAR_FEATS.map(f => (acctEventFeats[id]||{})[f]||0),
+            borderColor: radarColors[i], backgroundColor: radarColors[i]+'22',
+            pointBackgroundColor: radarColors[i], borderWidth: 2, pointRadius: 4,
+          }))
+        : [{ label:'No data', data:[0,0,0,0,0,0], borderColor:'#2e3250', backgroundColor:'transparent' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } } },
+      scales: { r: { grid:{color:'#2e3250'}, ticks:{color:'#94a3b8',backdropColor:'transparent',stepSize:1}, pointLabels:{color:'#e2e8f0',font:{size:11}}, angleLines:{color:'#2e3250'} } }
+    }
+  });
+}
+
+// ─── MAIN LOAD ────────────────────────────────────────────────────────────────
+async function loadDashboard(forceRefresh = false) {
+  const overlay   = document.getElementById('loading-overlay');
+  const dot       = document.getElementById('live-dot');
+  const btn       = document.getElementById('refresh-btn');
+  const forceBtn  = document.getElementById('force-refresh-btn');
+  const errBanner = document.getElementById('error-banner');
+
+  overlay.classList.remove('hidden');
+  dot.className = 'live-dot loading';
+  btn.disabled = true;
+  forceBtn.disabled = true;
+  errBanner.classList.remove('visible');
+  document.getElementById('last-updated').textContent = 'Loading…';
+
+  try {
+    const result = await fetchFromProxy(forceRefresh);
+    const { users, accounts, cached, cacheAgeMin, nextRefreshMin, fetchedAt, stale } = result;
+
+    setStep('Processing data…');
+
+    // Build account map and store raw data for range-switching
+    const acctMap = {};
+    accounts.forEach(a => { acctMap[a.id] = a; });
+    rawData = { users, accounts, acctMap };
+
+    const data = processData(users, accounts, currentRange);
+    renderDashboard(data);
+
+    const fetchedTime = fetchedAt ? new Date(fetchedAt).toLocaleTimeString() : '—';
+    if (cached) {
+      document.getElementById('last-updated').textContent =
+        `${stale ? '⚠ Stale cache' : 'Cached'} · fetched ${cacheAgeMin}m ago · refreshes in ~${nextRefreshMin}m`;
+    } else {
+      document.getElementById('last-updated').textContent =
+        `Live · fetched at ${fetchedTime} · refreshes in ~60m`;
+    }
+    document.getElementById('footer').textContent =
+      `Gainsight PX · ${cached ? 'Cached' : 'Live'} data · Last API fetch ${fetchedTime} · Excl. manifestclimate, grandviewresearch, neoimpact & test accounts`;
+
+    dot.className = 'live-dot';
+    overlay.classList.add('hidden');
+    btn.disabled = false;
+    forceBtn.disabled = false;
+
+  } catch (err) {
+    overlay.classList.add('hidden');
+    dot.className = 'live-dot error';
+    btn.disabled = false;
+    forceBtn.disabled = false;
+    document.getElementById('last-updated').textContent = 'Error loading data';
+    errBanner.innerHTML = `<strong>⚠️ Error:</strong> ${err.message}`;
+    errBanner.classList.add('visible');
+    console.error('Dashboard load error:', err);
+  }
+}
+
+// Start on load
+loadDashboard();
+</script>
+</body>
+</html>
