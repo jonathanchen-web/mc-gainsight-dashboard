@@ -1500,10 +1500,6 @@
             return { navigate };
         })();
 
-        // Default route
-        if (!location.hash) location.hash = '#/gainsight';
-        else ROUTER.navigate(location.hash);
-
         /* ============= GAINSIGHT (GS) ============= */
         window.GS = (() => {
             const EXCLUDE_DOMAINS = ['manifestclimate', 'grandviewresearch', 'neoimpact'];
@@ -3169,6 +3165,10 @@
 
             return { init, sortOrgTable, onPaidToggle };
         })();
+
+        // Default route — must run AFTER GS, FAQ, DP namespaces are defined
+        if (!location.hash) location.hash = '#/gainsight';
+        else ROUTER.navigate(location.hash);
     </script>
 </body>
 </html>
