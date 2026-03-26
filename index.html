@@ -2792,6 +2792,8 @@
             function processData() {
                 const weekly = {};
                 const monthly = {};
+                const addedWeekly = {};
+                const addedMonthly = {};
                 const byOrg = {};
 
                 _rawRows.forEach(row => {
@@ -2806,6 +2808,8 @@
 
                     weekly[weekKey] = (weekly[weekKey] || 0) + used;
                     monthly[monthKey] = (monthly[monthKey] || 0) + used;
+                    addedWeekly[weekKey] = (addedWeekly[weekKey] || 0) + added;
+                    addedMonthly[monthKey] = (addedMonthly[monthKey] || 0) + added;
 
                     if (!byOrg[org]) byOrg[org] = { used: 0, added: 0, type: ext ? 'external' : 'internal', weeks: {}, months: {}, reason: '', reasonDate: '' };
                     byOrg[org].used += used;
@@ -2823,6 +2827,8 @@
                 _processed = {
                     weekly: Object.entries(weekly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtWeekLabel(key), value: val })),
                     monthly: Object.entries(monthly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtMonthLabel(key), value: val })),
+                    addedWeekly: Object.entries(addedWeekly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtWeekLabel(key), value: val })),
+                    addedMonthly: Object.entries(addedMonthly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtMonthLabel(key), value: val })),
                     byOrg: Object.entries(byOrg).map(([name, data]) => ({ name, ...data })),
                 };
             }
@@ -2846,9 +2852,9 @@
             function initPaidState() {
                 _paidState = {};
                 _processed.byOrg.forEach(org => {
-                    // Auto-check paid if the most recent reason contains "(Paid)" or "Paid"
-                    const reason = (org.reason || '').toLowerCase();
-                    _paidState[org.name] = reason.includes('(paid)') || reason.includes('paid');
+                    // Auto-check paid only if the most recent reason ends with "(Paid)"
+                    const reason = (org.reason || '').trim();
+                    _paidState[org.name] = reason.toLowerCase().endsWith('(paid)');
                 });
             }
 
@@ -2873,29 +2879,27 @@
                 `;
             }
 
-            function renderKPIs(period) {
-                const periods = period === 'weekly' ? _processed.weekly : _processed.monthly;
-                if (periods.length < 2) {
-                    ['dp-kpi-used-week', 'dp-kpi-used-month', 'dp-kpi-added-week', 'dp-kpi-added-month'].forEach(id => {
-                        document.getElementById(id).textContent = '—';
-                        document.getElementById(id.replace('kpi', 'breakdown')).innerHTML = '';
-                    });
-                    return;
-                }
+            function renderKPIs() {
+                const wk = _processed.weekly;
+                const mo = _processed.monthly;
+                const addWk = _processed.addedWeekly;
+                const addMo = _processed.addedMonthly;
 
-                const curr = periods[periods.length - 1].value;
-                const prev = periods[periods.length - 2].value;
+                // Used This Week
+                document.getElementById('dp-kpi-used-week').textContent = wk.length > 0 ? n(wk[wk.length - 1].value) : '—';
+                document.getElementById('dp-breakdown-used-week').innerHTML = wk.length > 0 ? breakdownHTML(computePaidBreakdown('weekly')) : '';
 
-                const used = n(curr);
-                const breakdown = computePaidBreakdown(period);
+                // Used This Month
+                document.getElementById('dp-kpi-used-month').textContent = mo.length > 0 ? n(mo[mo.length - 1].value) : '—';
+                document.getElementById('dp-breakdown-used-month').innerHTML = mo.length > 0 ? breakdownHTML(computePaidBreakdown('monthly')) : '';
 
-                if (period === 'weekly') {
-                    document.getElementById('dp-kpi-used-week').textContent = used;
-                    document.getElementById('dp-breakdown-used-week').innerHTML = breakdownHTML(breakdown);
-                } else {
-                    document.getElementById('dp-kpi-used-month').textContent = used;
-                    document.getElementById('dp-breakdown-used-month').innerHTML = breakdownHTML(breakdown);
-                }
+                // Added This Week
+                document.getElementById('dp-kpi-added-week').textContent = addWk.length > 0 ? n(addWk[addWk.length - 1].value) : '—';
+                document.getElementById('dp-breakdown-added-week').innerHTML = '';
+
+                // Added This Month
+                document.getElementById('dp-kpi-added-month').textContent = addMo.length > 0 ? n(addMo[addMo.length - 1].value) : '—';
+                document.getElementById('dp-breakdown-added-month').innerHTML = '';
             }
 
             function makeLineChart(canvasId, data, label, color) {
@@ -2938,6 +2942,7 @@
             function setChartPeriod(period) {
                 document.querySelectorAll('.dp-toggle-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelector(`.dp-toggle-btn[data-period="${period}"]`)?.classList.add('active');
+                renderKPIs();
                 redrawCharts(period);
             }
 
@@ -3016,7 +3021,7 @@
             function renderDashboard() {
                 if (!_processed) return;
 
-                renderKPIs('weekly');
+                renderKPIs();
                 renderOrgTable();
                 redrawCharts('weekly');
 
