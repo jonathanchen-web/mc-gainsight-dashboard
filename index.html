@@ -1560,10 +1560,6 @@
             // HubSpot exclusion list (loaded async)
             let _excludedNames = new Set();
 
-            // Feature-user map from API (userId → [top-level feature names])
-            // Populated from actual Gainsight PX page visit data
-            let _featureUserMap = {};
-
             let charts = {};
             let _lastData = null; // Store last processed data for filter re-renders
 
@@ -1586,27 +1582,38 @@
             }
 
             function inferFeatures(user) {
-                const userId = user.identifyId || user.id;
+                // Primary signal: ManifestUsages custom attribute (actual user intent)
+                const usages = ((user.customAttributes || {}).ManifestUsages || '').toLowerCase();
+                const feats = [];
 
-                // If we have actual page-visit data from Gainsight PX, use it
-                if (_featureUserMap && userId && _featureUserMap[userId]) {
-                    const visitedModules = _featureUserMap[userId]; // e.g. ['Workspace','Compliance']
-                    const feats = [];
-                    visitedModules.forEach(mod => {
-                        const cfg = FEATURE_HIERARCHY[mod];
-                        if (cfg && cfg.subs.length) feats.push(...cfg.subs);
-                    });
-                    if (feats.length) return [...new Set(feats)];
+                if (usages) {
+                    // Map ManifestUsages values to dashboard feature categories
+                    if (usages.includes('disclosure alignment'))
+                        feats.push('Assessments','DisclosureSearch','Compare');
+                    if (usages.includes('climate trend') || usages.includes('benchmarks') || usages.includes('best practices'))
+                        feats.push('Data','Insights','BestPractices');
+                    if (usages.includes('climate strategy'))
+                        feats.push('ClimateAction','DisclosureIndex','ClimateProfile','Progress');
+                    if (usages.includes('other'))
+                        feats.push('ClimateAction'); // default bucket
                 }
 
-                // Fallback: infer from user role (legacy behavior)
+                if (feats.length) return [...new Set(feats)];
+
+                // Fallback: role-based inference (more inclusive than before)
                 const role = (user.role||'').toLowerCase();
-                const feats = [];
-                if (role.includes('workspace')) feats.push('ClimateAction','DisclosureIndex','ClimateProfile','Progress');
+                if (role === 'account owner' || role.includes('workspace')) {
+                    // Full-platform users — assign all features since they have access to everything
+                    return ['ClimateAction','DisclosureIndex','ClimateProfile','Progress',
+                            'Data','Insights','BestPractices',
+                            'Assessments','DisclosureSearch','Compare'];
+                }
                 if (role.includes('tracker')) feats.push('Data','Insights','BestPractices');
+                if (role.includes('resources')) feats.push('ClimateAction');
                 if (role.includes('compliance') || role.includes('disclosure')) feats.push('Assessments','DisclosureSearch','Compare');
-                if (role === 'account owner') feats.push('ClimateAction','DisclosureIndex','ClimateProfile','Progress','Data','Insights','BestPractices','Assessments','DisclosureSearch','Compare');
-                return feats.length ? [...new Set(feats)] : ['ClimateAction'];
+
+                return feats.length ? [...new Set(feats)] : ['ClimateAction','DisclosureIndex','ClimateProfile','Progress',
+                    'Data','Insights','BestPractices','Assessments','DisclosureSearch','Compare'];
             }
 
             function inferTopFeatures(user) {
@@ -1700,22 +1707,7 @@
                     : '/api/gainsight-proxy';
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`API error ${res.status}`);
-                const data = await res.json();
-
-                // Store feature-user map from API (actual page visit data)
-                if (data.featureUserMap && Object.keys(data.featureUserMap).length > 0) {
-                    _featureUserMap = data.featureUserMap;
-                    console.log(`[GS] Feature-user map loaded: ${Object.keys(_featureUserMap).length} users with visit data`);
-                } else {
-                    console.log('[GS] No feature-user map from API — using role-based fallback');
-                }
-
-                // Log debug info about which API endpoints worked
-                if (data.featureDebug) {
-                    console.log('[GS] Feature API debug:', data.featureDebug);
-                }
-
-                return data;
+                return res.json();
             }
 
             function processData(raw, timePeriodMonths, featureFilter) {

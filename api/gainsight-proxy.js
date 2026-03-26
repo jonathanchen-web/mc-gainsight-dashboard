@@ -6,13 +6,6 @@ const API_KEY = process.env.GAINSIGHT_PX_API_KEY;
 const BASE_URL = 'https://api.aptrinsic.com/v1';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Top-level feature module IDs in Gainsight PX (under app.manifestclimate.com)
-const FEATURE_MODULES = {
-  Workspace:  'dcac118f-d496-45e1-b612-ae9c276463ba',
-  Tracker:    'e8f9b98a-3835-44c9-9811-b4b505c5c779',
-  Compliance: 'a2a00aa0-653a-41c5-81fc-ca205f88925b',
-};
-
 // In-memory server cache — shared across all visitors on the same warm instance
 let cache = null;
 let cacheTime = 0;
@@ -52,111 +45,6 @@ async function fetchAll(endpoint, key) {
   return all;
 }
 
-// Fetch feature match data for a module — tries /feature/{id}/stats endpoint
-// Returns { userCount, visitCount, users } or null if endpoint doesn't exist
-async function fetchFeatureStats(featureId) {
-  try {
-    // Try the feature stats/users endpoint
-    const url = `${BASE_URL}/feature/${featureId}/stats`;
-    const res = await fetch(url, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Fetch all feature match events for a specific feature module
-// Uses the /analytics/feature/featureMatch endpoint
-async function fetchFeatureUsers(featureId) {
-  try {
-    const url = `${BASE_URL}/analytics/features/${featureId}/users?pageSize=500`;
-    const res = await fetch(url, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Fetch the full features list to build the hierarchy tree
-async function fetchFeatures() {
-  const url = `${BASE_URL}/feature?pageSize=200`;
-  const res = await fetch(url, {
-    headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.features || [];
-}
-
-// Build a map of userId → [top-level feature names] based on feature hierarchy
-// Walks the tree: for each child feature of a top module, fetch its users
-async function buildFeatureUserMap(features) {
-  const featureUserMap = {}; // userId → Set of top-level feature names
-  const debugInfo = { endpoints_tried: [], endpoints_worked: [] };
-
-  for (const [moduleName, moduleId] of Object.entries(FEATURE_MODULES)) {
-    // Get all descendant feature IDs for this module
-    const descendantIds = getAllDescendants(features, moduleId);
-    descendantIds.push(moduleId); // include the module itself
-
-    // Try fetching users for the module-level feature
-    await sleep(300);
-    const statsResult = await fetchFeatureStats(moduleId);
-    debugInfo.endpoints_tried.push(`/feature/${moduleId}/stats`);
-    if (statsResult) {
-      debugInfo.endpoints_worked.push({ endpoint: `/feature/${moduleId}/stats`, result: statsResult });
-    }
-
-    await sleep(300);
-    const usersResult = await fetchFeatureUsers(moduleId);
-    debugInfo.endpoints_tried.push(`/analytics/features/${moduleId}/users`);
-    if (usersResult) {
-      debugInfo.endpoints_worked.push({ endpoint: `/analytics/features/${moduleId}/users`, keys: Object.keys(usersResult) });
-      // Try to extract user IDs from the response
-      const userIds = extractUserIds(usersResult);
-      for (const uid of userIds) {
-        if (!featureUserMap[uid]) featureUserMap[uid] = new Set();
-        featureUserMap[uid].add(moduleName);
-      }
-    }
-  }
-
-  // Convert Sets to arrays for JSON serialization
-  const serializable = {};
-  for (const [uid, feats] of Object.entries(featureUserMap)) {
-    serializable[uid] = [...feats];
-  }
-
-  return { featureUserMap: serializable, debugInfo };
-}
-
-function getAllDescendants(features, parentId) {
-  const children = features.filter(f => f.parentFeatureId === parentId);
-  const ids = children.map(c => c.id);
-  for (const child of children) {
-    ids.push(...getAllDescendants(features, child.id));
-  }
-  return ids;
-}
-
-function extractUserIds(data) {
-  // Try various response shapes
-  if (Array.isArray(data)) return data.map(u => u.identifyId || u.userId || u.id).filter(Boolean);
-  if (data.users) return data.users.map(u => u.identifyId || u.userId || u.id).filter(Boolean);
-  if (data.results) return data.results.map(u => u.identifyId || u.userId || u.id).filter(Boolean);
-  return [];
-}
-
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -178,8 +66,6 @@ export default async function handler(req, res) {
     return res.status(200).json({
       users: cache.users,
       accounts: cache.accounts,
-      featureUserMap: cache.featureUserMap || {},
-      featureDebug: cache.featureDebug || {},
       cached: true,
       fetchedAt: cacheTime,
       cacheAgeMin: ageMin,
@@ -200,24 +86,13 @@ export default async function handler(req, res) {
     // Fetch ALL accounts (paginated)
     const accounts = await fetchAll('accounts', 'accounts');
 
-    await sleep(600);
-
-    // Fetch features list and try to build feature-user mapping
-    const features = await fetchFeatures();
-
-    await sleep(600);
-
-    const { featureUserMap, debugInfo } = await buildFeatureUserMap(features);
-
     // Store in server cache
-    cache = { users, accounts, featureUserMap, featureDebug: debugInfo };
+    cache = { users, accounts };
     cacheTime = Date.now();
 
     return res.status(200).json({
       users: cache.users,
       accounts: cache.accounts,
-      featureUserMap: cache.featureUserMap,
-      featureDebug: cache.featureDebug,
       cached: false,
       fetchedAt: cacheTime,
       cacheAgeMin: 0,
@@ -230,8 +105,6 @@ export default async function handler(req, res) {
       return res.status(200).json({
         users: cache.users,
         accounts: cache.accounts,
-        featureUserMap: cache.featureUserMap || {},
-        featureDebug: cache.featureDebug || {},
         cached: true,
         stale: true,
         fetchedAt: cacheTime,
