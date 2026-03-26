@@ -1560,6 +1560,10 @@
             // HubSpot exclusion list (loaded async)
             let _excludedNames = new Set();
 
+            // Feature-user map from actual Gainsight PX feature_match events
+            // Maps userId (identifyId) → [top-level module names visited]
+            let _featureUserMap = {};
+
             let charts = {};
             let _lastData = null; // Store last processed data for filter re-renders
 
@@ -1581,39 +1585,40 @@
                 return `<div class="feat-tags">${feats.map(f=>`<span class="feat-tag ${FEAT_CLASS[f]||'feat-other'}">${SUB_DISPLAY[f] || f}</span>`).join('')}</div>`;
             }
 
-            function inferFeatures(user) {
-                // Primary signal: ManifestUsages custom attribute (actual user intent)
-                const usages = ((user.customAttributes || {}).ManifestUsages || '').toLowerCase();
-                const feats = [];
+            // Maps top-level Gainsight PX module names to dashboard sub-features
+            const MODULE_TO_SUBS = {
+                'Workspace': ['ClimateAction','DisclosureIndex','ClimateProfile','Progress'],
+                'Tracker': ['Data','Insights','BestPractices'],
+                'Compliance': ['Assessments','DisclosureSearch','Compare'],
+            };
 
-                if (usages) {
-                    // Map ManifestUsages values to dashboard feature categories
-                    if (usages.includes('disclosure alignment'))
-                        feats.push('Assessments','DisclosureSearch','Compare');
-                    if (usages.includes('climate trend') || usages.includes('benchmarks') || usages.includes('best practices'))
-                        feats.push('Data','Insights','BestPractices');
-                    if (usages.includes('climate strategy'))
-                        feats.push('ClimateAction','DisclosureIndex','ClimateProfile','Progress');
-                    if (usages.includes('other'))
-                        feats.push('ClimateAction'); // default bucket
+            function inferFeatures(user) {
+                const userId = user.identifyId || user.id;
+
+                // Primary signal: actual Gainsight PX feature_match events
+                if (_featureUserMap && userId && _featureUserMap[userId]) {
+                    const visitedModules = _featureUserMap[userId]; // e.g. ['Workspace','Compliance']
+                    const feats = [];
+                    for (const mod of visitedModules) {
+                        const subs = MODULE_TO_SUBS[mod];
+                        if (subs) feats.push(...subs);
+                    }
+                    if (feats.length) return [...new Set(feats)];
                 }
 
-                if (feats.length) return [...new Set(feats)];
-
-                // Fallback: role-based inference (more inclusive than before)
+                // Fallback: role-based (for users with no feature_match events)
                 const role = (user.role||'').toLowerCase();
                 if (role === 'account owner' || role.includes('workspace')) {
-                    // Full-platform users — assign all features since they have access to everything
                     return ['ClimateAction','DisclosureIndex','ClimateProfile','Progress',
                             'Data','Insights','BestPractices',
                             'Assessments','DisclosureSearch','Compare'];
                 }
+                const feats = [];
                 if (role.includes('tracker')) feats.push('Data','Insights','BestPractices');
                 if (role.includes('resources')) feats.push('ClimateAction');
                 if (role.includes('compliance') || role.includes('disclosure')) feats.push('Assessments','DisclosureSearch','Compare');
 
-                return feats.length ? [...new Set(feats)] : ['ClimateAction','DisclosureIndex','ClimateProfile','Progress',
-                    'Data','Insights','BestPractices','Assessments','DisclosureSearch','Compare'];
+                return feats.length ? [...new Set(feats)] : ['ClimateAction'];
             }
 
             function inferTopFeatures(user) {
@@ -1707,7 +1712,18 @@
                     : '/api/gainsight-proxy';
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`API error ${res.status}`);
-                return res.json();
+                const data = await res.json();
+
+                // Store feature-user map from actual Gainsight PX feature_match events
+                if (data.featureUserMap && Object.keys(data.featureUserMap).length > 0) {
+                    _featureUserMap = data.featureUserMap;
+                    const stats = data.featureStats || {};
+                    console.log(`[GS] Feature data loaded: ${stats.totalFeatureMatchEvents || 0} events, ${stats.usersWithFeatureData || 0} users mapped`, stats.moduleCounts || {});
+                } else {
+                    console.log('[GS] No feature_match data — using role-based fallback');
+                }
+
+                return data;
             }
 
             function processData(raw, timePeriodMonths, featureFilter) {
