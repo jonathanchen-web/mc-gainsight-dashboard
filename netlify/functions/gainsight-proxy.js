@@ -2,7 +2,7 @@
 // Runs on Netlify's servers (no CORS, no browser rate limits)
 // All visitors share one server-side cache that refreshes every hour
 
-const API_KEY = 'da04b75e-f96a-4eab-bdcb-dd9cb0f7e2f0';
+const API_KEY = process.env.GAINSIGHT_PX_API_KEY || 'da04b75e-f96a-4eab-bdcb-dd9cb0f7e2f0';
 const BASE_URL = 'https://api.aptrinsic.com/v1';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -57,31 +57,19 @@ exports.handler = async (event) => {
 
     await sleep(600);
 
-    // Fetch ALL accounts with pagination (totalHits can exceed 200)
-    let allAccounts = [];
-    let acctScrollId = null;
-    let pagesFetched = 0;
-    do {
-      const acctUrl = acctScrollId
-        ? `${BASE_URL}/accounts?pageSize=100&scrollId=${encodeURIComponent(acctScrollId)}`
-        : `${BASE_URL}/accounts?pageSize=100`;
-      const accountsRes = await fetch(acctUrl, {
-        headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-      });
-      if (!accountsRes.ok) {
-        throw new Error(`Gainsight /accounts returned ${accountsRes.status}`);
-      }
-      const accountsData = await accountsRes.json();
-      allAccounts = allAccounts.concat(accountsData.accounts || []);
-      acctScrollId = accountsData.scrollId || null;
-      pagesFetched++;
-      if (acctScrollId) await sleep(400); // be gentle between pages
-    } while (acctScrollId && pagesFetched < 10); // safety cap: max 1000 accounts
+    // Fetch accounts
+    const accountsRes = await fetch(`${BASE_URL}/accounts?pageSize=200`, {
+      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+    });
+    if (!accountsRes.ok) {
+      throw new Error(`Gainsight /accounts returned ${accountsRes.status}`);
+    }
+    const accountsData = await accountsRes.json();
 
     // Store in server cache
     cache = {
       users: usersData.users || [],
-      accounts: allAccounts,
+      accounts: accountsData.accounts || [],
     };
     cacheTime = Date.now();
 

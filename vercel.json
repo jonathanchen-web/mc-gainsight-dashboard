@@ -1,0 +1,10 @@
+{
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/.netlify/functions/gainsight-proxy",
+      "destination": "/api/gainsight-proxy"
+    }
+  ]
+}

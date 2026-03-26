@@ -1,842 +1,3159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gainsight PX — Live Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-  :root {
-    --bg: #0f1117; --surface: #1a1d27; --surface2: #222636;
-    --border: #2e3250; --accent: #6366f1; --accent2: #22d3ee;
-    --accent3: #f59e0b; --accent4: #10b981; --accent5: #f43f5e;
-    --text: #e2e8f0; --muted: #94a3b8; --green: #10b981; --red: #f43f5e;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manifest Climate · Metrics Hub</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #222636;
+            --border: #6b6f8a;
+            --accent: #818cf8;
+            --accent2: #22d3ee;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --green: #10b981;
+            --red: #fb7185;
+            --amber: #f59e0b;
+            --accent-btn: #4f46e5;
+            --red-btn: #e11d48;
+        }
 
-  /* Loading overlay */
-  #loading-overlay {
-    position: fixed; inset: 0; background: rgba(15,17,23,0.95);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 1000; gap: 20px;
-  }
-  #loading-overlay.hidden { display: none; }
-  .spinner {
-    width: 48px; height: 48px;
-    border: 4px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { color: var(--muted); font-size: 15px; }
-  .loading-steps { color: var(--muted); font-size: 12px; max-width: 300px; text-align: center; line-height: 1.7; }
-  #loading-step { color: var(--accent2); }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  /* Error banner */
-  #error-banner {
-    display: none; background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3);
-    color: #fca5a5; padding: 12px 20px; margin: 16px 32px; border-radius: 10px;
-    font-size: 13px; line-height: 1.6;
-  }
-  #error-banner.visible { display: block; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
 
-  /* Header */
-  header {
-    background: linear-gradient(135deg, #1a1d27 0%, #16193a 100%);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 32px;
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  }
-  header h1 { font-size: 20px; font-weight: 700; color: #fff; }
-  header h1 span { color: var(--accent); }
-  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .badge { background: rgba(99,102,241,0.15); color: var(--accent); border: 1px solid rgba(99,102,241,0.3); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
-  .live-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
-  .live-dot.loading { background: var(--accent3); }
-  .live-dot.error { background: var(--red); animation: none; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-  #last-updated { font-size: 12px; color: var(--muted); }
-  .refresh-btn {
-    background: rgba(99,102,241,0.15); color: var(--accent); border: 1px solid rgba(99,102,241,0.3);
-    border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s;
-  }
-  .refresh-btn:hover { background: rgba(99,102,241,0.3); }
-  .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
 
-  /* Range selector */
-  .range-selector {
-    display: flex; align-items: center; gap: 4px;
-    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
-    border-radius: 10px; padding: 4px;
-  }
-  .range-btn {
-    background: transparent; color: var(--muted); border: none;
-    border-radius: 7px; padding: 5px 13px; font-size: 12px; font-weight: 600; cursor: pointer;
-    transition: all 0.15s; white-space: nowrap;
-  }
-  .range-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-  .range-btn.active { background: var(--accent); color: #fff; }
+        /* Top Bar */
+        #topBar {
+            height: 60px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            flex-shrink: 0;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
 
-  /* Layout */
-  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
-  .section-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-  .section-title::before { content: ''; width: 3px; height: 18px; background: var(--accent); border-radius: 2px; display: inline-block; }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
 
-  /* KPI Cards */
-  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
-  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
-  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-  .kpi-card.blue::before { background: var(--accent); }
-  .kpi-card.cyan::before { background: var(--accent2); }
-  .kpi-card.amber::before { background: var(--accent3); }
-  .kpi-card.green::before { background: var(--accent4); }
-  .kpi-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 8px; }
-  .kpi-value { font-size: 32px; font-weight: 800; color: #fff; line-height: 1; }
-  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .kpi-icon { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: 0.15; }
-  .skeleton { background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; height: 1em; }
-  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        /* Sidebar */
+        #sidebar {
+            width: 220px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 16px 0;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
 
-  /* Cards & layout */
-  .row { display: grid; gap: 20px; margin-bottom: 28px; }
-  .row-2 { grid-template-columns: 1fr 1fr; }
-  .row-65-35 { grid-template-columns: 65fr 35fr; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-  .card-title .tag { font-size: 11px; color: var(--muted); background: var(--surface2); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
-  .chart-wrap { position: relative; }
+        .nav-item {
+            padding: 12px 16px;
+            margin: 0 8px 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--muted);
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid transparent;
+        }
 
-  /* Tables */
-  table { width: 100%; border-collapse: collapse; }
-  thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
-  tbody tr { border-bottom: 1px solid rgba(46,50,80,0.5); transition: background 0.15s; }
-  tbody tr:hover { background: rgba(99,102,241,0.05); }
-  tbody td { padding: 10px 12px; font-size: 13px; vertical-align: middle; }
-  .rank { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
-  .rank-1 { background: rgba(245,158,11,0.2); color: #f59e0b; }
-  .rank-2 { background: rgba(148,163,184,0.15); color: #94a3b8; }
-  .rank-3 { background: rgba(180,120,60,0.2); color: #cd7f32; }
-  .rank-other { background: rgba(255,255,255,0.05); color: var(--muted); }
-  .bar-cell { display: flex; align-items: center; gap: 8px; }
-  .mini-bar { height: 6px; border-radius: 3px; min-width: 4px; }
-  .visits-num { font-weight: 700; color: var(--text); }
-  .email-text { color: var(--muted); font-size: 12px; }
-  .company-text { color: var(--accent2); font-size: 12px; font-weight: 500; }
-  .date-text { font-size: 12px; color: var(--muted); }
-  .status-pill { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .status-active { background: rgba(16,185,129,0.15); color: var(--green); }
-  .status-inactive { background: rgba(244,63,94,0.1); color: var(--red); }
-  .feat-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-  .feat-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px; white-space: nowrap; }
-  .feat-tracker    { background: rgba(99,102,241,0.15); color: #a5b4fc; }
-  .feat-workspace  { background: rgba(34,211,238,0.12); color: #67e8f9; }
-  .feat-resources  { background: rgba(245,158,11,0.13); color: #fcd34d; }
-  .feat-disclosure { background: rgba(16,185,129,0.13); color: #6ee7b7; }
-  .feat-search     { background: rgba(244,63,94,0.12);  color: #fca5a5; }
-  .feat-comparison { background: rgba(168,85,247,0.13); color: #d8b4fe; }
-  .feat-mcp        { background: rgba(251,146,60,0.13); color: #fdba74; }
-  .feat-other      { background: rgba(148,163,184,0.1); color: #94a3b8; }
-  .feat-compliance  { background: rgba(244,63,94,0.15);  color: #fca5a5; }
-  .feat-integrations{ background: rgba(16,185,129,0.15); color: #6ee7b7; }
-  .use-case-text   { font-size: 11px; color: var(--muted); line-height: 1.5; }
-  /* Hierarchical feature viz */
-  .feat-row { margin-bottom: 18px; }
-  .feat-row-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .feat-row-count  { font-size: 13px; font-weight: 700; color: #fff; }
-  .feat-row-label  { font-size: 11px; color: var(--muted); }
-  .feat-bar-track  { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
-  .feat-bar-fill   { height: 100%; border-radius: 4px; }
-  .feat-sub-chips  { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 4px; }
-  .feat-chip       { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid rgba(46,50,80,0.8); }
+        .nav-item:hover {
+            color: var(--text);
+            background: var(--surface2);
+        }
 
-  /* MoM */
-  .mom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 8px; }
-  .mom-cell { background: var(--surface2); border-radius: 8px; padding: 10px 8px; text-align: center; }
-  .mom-cell .month { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .mom-cell .val { font-size: 18px; font-weight: 700; color: #fff; }
-  .mom-cell .delta { font-size: 11px; margin-top: 2px; }
-  .delta-up { color: var(--green); } .delta-down { color: var(--red); } .delta-flat { color: var(--muted); }
+        .nav-item.active {
+            background: var(--surface2);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
 
-  footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 8px; }
-</style>
+        .nav-icon {
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Views Container */
+        #viewsContainer {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .view {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Common Styles */
+        button {
+            background: var(--accent-btn);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #4338ca;
+        }
+
+        button.secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        button.secondary:hover {
+            background: #2a2d3a;
+            border-color: var(--accent);
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* WCAG 2.4.7 — Visible Focus */
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        button:focus-visible,
+        select:focus-visible,
+        input:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .nav-item:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+        }
+
+        /* ============= GAINSIGHT STYLES ============= */
+
+        #gs-loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 17, 23, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #gs-loading-overlay.show {
+            display: flex;
+        }
+
+        .gs-spinner {
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #gs-error-banner {
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid var(--red);
+            color: #fca5ac;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: none;
+            font-size: 13px;
+        }
+
+        #gs-error-banner.show {
+            display: block;
+        }
+
+        .gs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 0;
+        }
+
+        .gs-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gs-live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .gs-header-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .gs-badge {
+            background: var(--accent-btn);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .gs-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .gs-kpi-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .gs-kpi-card.blue {
+            border-left: 4px solid #60a5fa;
+        }
+
+        .gs-kpi-card.cyan {
+            border-left: 4px solid var(--accent2);
+        }
+
+        .gs-kpi-card.amber {
+            border-left: 4px solid var(--amber);
+        }
+
+        .gs-kpi-card.green {
+            border-left: 4px solid var(--green);
+        }
+
+        .gs-kpi-label {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .gs-kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .gs-kpi-detail {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .gs-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .gs-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .gs-table th {
+            background: var(--surface);
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .gs-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .gs-table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .gs-rank {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .gs-bar-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 28px;
+        }
+
+        .gs-mini-bar {
+            flex: 1;
+            background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%);
+            border-radius: 3px;
+            height: 4px;
+        }
+
+        .feat-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .feat-tag {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .feat-tracker { background: #6366f120; color: #818cf8; border: 1px solid #6366f140; }
+        .feat-workspace { background: #22d3ee20; color: #22d3ee; border: 1px solid #22d3ee40; }
+        .feat-resources { background: #f59e0b20; color: #f59e0b; border: 1px solid #f59e0b40; }
+        .feat-compliance { background: #10b98120; color: #34d399; border: 1px solid #10b98140; }
+        .feat-integrations { background: #f59e0b20; color: #f59e0b; border: 1px solid #f59e0b40; }
+        .feat-disclosure { background: #10b98120; color: #34d399; border: 1px solid #10b98140; }
+        .feat-search { background: #f43f5e20; color: #fb7185; border: 1px solid #f43f5e40; }
+        .feat-comparison { background: #a78bfa20; color: #a78bfa; border: 1px solid #a78bfa40; }
+        .feat-mcp { background: #34d39920; color: #34d399; border: 1px solid #34d39940; }
+        .feat-climate-actions { background: #fb923c20; color: #fb923c; border: 1px solid #fb923c40; }
+        .feat-climate-profile { background: #60a5fa20; color: #60a5fa; border: 1px solid #60a5fa40; }
+        .feat-home { background: #e879f920; color: #e879f9; border: 1px solid #e879f940; }
+        .feat-other { background: #94a3b820; color: #94a3b8; border: 1px solid #94a3b840; }
+
+        .gs-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .gs-filter-bar label {
+            font-size: 13px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .gs-filter-bar select {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .gs-multiselect {
+            position: relative;
+            display: inline-block;
+        }
+
+        .gs-multiselect-btn {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            min-width: 160px;
+            text-align: left;
+        }
+
+        .gs-multiselect-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            z-index: 100;
+            min-width: 180px;
+            margin-top: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .gs-multiselect-dropdown.open {
+            display: block;
+        }
+
+        .gs-multiselect-dropdown label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .gs-multiselect-dropdown label:hover {
+            background: var(--surface2);
+        }
+
+        .gs-mom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .gs-chart-container {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gs-chart-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .gs-footer {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ============= FAQ STYLES ============= */
+
+        #faq-error-banner {
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid var(--red);
+            color: #fca5ac;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: none;
+            font-size: 13px;
+        }
+
+        #faq-error-banner.show {
+            display: block;
+        }
+
+        .faq-header {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .faq-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .faq-controls select,
+        .faq-controls input {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .faq-kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .faq-kpi {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .faq-kpi-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .faq-kpi-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .faq-charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .faq-chart-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .faq-chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .faq-chart-container {
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .faq-chart-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .faq-table-section {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .faq-table-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .faq-tab {
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .faq-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: none;
+        }
+
+        .faq-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .faq-table th {
+            background: var(--surface);
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .faq-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .faq-table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .faq-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .faq-badge-open {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--green);
+        }
+
+        .faq-badge-closed {
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--red);
+        }
+
+        .faq-badge-feature {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--accent);
+        }
+
+        .faq-feat-assessment { background: #6366f120; color: #818cf8; border-color: #6366f140; }
+        .faq-feat-login { background: #22d3ee20; color: #22d3ee; border-color: #22d3ee40; }
+        .faq-feat-compliance { background: #f59e0b20; color: #f59e0b; border-color: #f59e0b40; }
+        .faq-feat-comparison { background: #a78bfa20; color: #a78bfa; border-color: #a78bfa40; }
+        .faq-feat-pdf { background: #10b98120; color: #34d399; border-color: #10b98140; }
+        .faq-feat-ai { background: #fb923c20; color: #fb923c; border-color: #fb923c40; }
+        .faq-feat-agent { background: #f43f5e20; color: #fb7185; border-color: #f43f5e40; }
+        .faq-feat-tracker { background: #60a5fa20; color: #60a5fa; border-color: #60a5fa40; }
+        .faq-feat-disclosure { background: #e879f920; color: #e879f9; border-color: #e879f940; }
+        .faq-feat-workspace { background: #34d39920; color: #34d399; border-color: #34d39940; }
+
+        .faq-priority-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .priority-high { background: var(--red); }
+        .priority-medium { background: var(--amber); }
+        .priority-low { background: var(--green); }
+
+        .faq-kpi-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+        .faq-footer {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ============= DATAPOINTS STYLES ============= */
+
+        #dp-loadSection {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .dp-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        #dp-fileInput {
+            display: none;
+        }
+
+        #dp-uploadZone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 32px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+
+        #dp-uploadZone:hover,
+        #dp-uploadZone.drag-over {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .dp-upload-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .dp-upload-text {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .dp-upload-hint {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        #dp-dashboard {
+            display: none;
+        }
+
+        .dp-dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .dp-dashboard-header .dp-header {
+            margin-bottom: 0;
+        }
+
+        .dp-dashboard-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dp-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .dp-action-btn:hover {
+            background: var(--surface);
+            border-color: var(--accent);
+        }
+
+        .dp-action-btn-danger:hover {
+            border-color: #f43f5e;
+            color: #f43f5e;
+        }
+
+        .dp-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .dp-kpi-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .dp-kpi-card.used {
+            border-left: 4px solid var(--accent);
+        }
+
+        .dp-kpi-card.added {
+            border-left: 4px solid var(--green);
+        }
+
+        .dp-kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .dp-kpi-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .dp-breakdown {
+            font-size: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .dp-break-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .dp-break-badge {
+            display: inline-block;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .dp-break-paid {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--accent);
+        }
+
+        .dp-break-unpaid {
+            background: rgba(148, 163, 184, 0.2);
+            color: var(--muted);
+        }
+
+        .dp-filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .dp-filter-bar select {
+            flex: 0 1 auto;
+            min-width: 150px;
+        }
+
+        .dp-toggle-group {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+        }
+
+        .dp-toggle-btn {
+            background: none;
+            color: var(--text);
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            border-right: 1px solid var(--border);
+        }
+
+        .dp-toggle-btn:last-child {
+            border-right: none;
+        }
+
+        .dp-toggle-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .dp-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .dp-chart-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .dp-chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .dp-chart-container {
+            height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dp-chart-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .dp-table-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .dp-table-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .dp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .dp-table th {
+            background: var(--surface);
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .dp-table th:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .dp-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dp-table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .dp-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .dp-badge-external {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--accent);
+        }
+
+        .dp-badge-internal {
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--muted);
+        }
+
+        .dp-change-positive {
+            color: var(--green);
+        }
+
+        .dp-change-negative {
+            color: var(--red);
+        }
+
+        .dp-change-neutral {
+            color: var(--muted);
+        }
+
+        .dp-paid-cell {
+            display: flex;
+            gap: 4px;
+        }
+
+        .dp-paid-checkbox {
+            cursor: pointer;
+        }
+
+        .dp-footer {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+    </style>
 </head>
 <body>
+    <header id="topBar" role="banner">Manifest Climate · Metrics Hub</header>
 
-<!-- Loading Overlay -->
-<div id="loading-overlay">
-  <div class="spinner"></div>
-  <div class="loading-text">Fetching live data from Gainsight PX…</div>
-  <div class="loading-steps">
-    <span id="loading-step">Connecting to API…</span>
-  </div>
-</div>
+    <div class="main-container">
+        <nav id="sidebar" role="navigation" aria-label="Dashboard navigation">
+            <div class="nav-item active" data-view="gainsight" tabindex="0" role="button" aria-label="Product Adoption Dashboard">
+                <span class="nav-icon"><i class="ph ph-chart-pie-slice"></i></span>
+                <span>Product Adoption</span>
+            </div>
+            <div class="nav-item" data-view="helpfaq" tabindex="0" role="button" aria-label="Product Feedback Dashboard">
+                <span class="nav-icon"><i class="ph ph-headset"></i></span>
+                <span>Product Feedback</span>
+            </div>
+            <div class="nav-item" data-view="datapoints" tabindex="0" role="button" aria-label="Datapoints Usage dashboard">
+                <span class="nav-icon"><i class="ph ph-cube"></i></span>
+                <span>Datapoints Usage</span>
+            </div>
+        </nav>
 
-<!-- Error Banner -->
-<div id="error-banner"></div>
+        <main id="viewsContainer" role="main">
+            <!-- ============= GAINSIGHT VIEW ============= -->
+            <div id="view-gainsight" class="view active">
+                <div id="gs-loading-overlay">
+                    <div class="gs-spinner"></div>
+                </div>
 
-<header>
-  <div>
-    <h1>Gainsight PX — <span>Live Dashboard</span></h1>
-    <div style="color:var(--muted);font-size:13px;margin-top:2px;">Top Accounts &amp; Users · Excl. internal, grandviewresearch &amp; neoimpact</div>
-  </div>
-  <div class="header-right">
-    <!-- Time range selector -->
-    <div class="range-selector">
-      <button class="range-btn" data-range="1w" onclick="setRange('1w')">Last Week</button>
-      <button class="range-btn" data-range="1m" onclick="setRange('1m')">Last Month</button>
-      <button class="range-btn" data-range="3m" onclick="setRange('3m')">3 Months</button>
-      <button class="range-btn active" data-range="6m" onclick="setRange('6m')">6 Months</button>
+                <div id="gs-error-banner"></div>
+
+                <div class="gs-header">
+                    <h1>
+                        <span>Product Adoption</span>
+                        <span class="gs-live-dot"></span>
+                    </h1>
+                    <div class="gs-header-controls">
+                        <button id="gs-refresh-btn" class="secondary">Refresh</button>
+                        <button id="gs-force-refresh-btn" class="secondary">Force Refresh</button>
+                        <span class="gs-badge" id="gs-cache-badge">Cached</span>
+                    </div>
+                </div>
+
+                <div class="gs-filter-bar">
+                    <label>Time Period:</label>
+                    <select id="gs-timePeriodFilter">
+                        <option value="6">Last 6 months</option>
+                        <option value="3">Last 3 months</option>
+                        <option value="1">Last month</option>
+                    </select>
+
+                    <label>Features:</label>
+                    <div class="gs-multiselect">
+                        <button class="gs-multiselect-btn" id="gs-featureMultiBtn">All Features</button>
+                        <div class="gs-multiselect-dropdown" id="gs-featureMultiDropdown">
+                            <label><input type="checkbox" value="Workspace" checked> Workspace</label>
+                            <label><input type="checkbox" value="Tracker" checked> Tracker</label>
+                            <label><input type="checkbox" value="Compliance" checked> Compliance</label>
+                            <label><input type="checkbox" value="Integrations" checked> Integrations</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gs-kpi-grid">
+                    <div class="gs-kpi-card blue">
+                        <div class="gs-kpi-label">Top Account</div>
+                        <div class="gs-kpi-value" id="gs-kpi-top-account">—</div>
+                        <div class="gs-kpi-detail" id="gs-kpi-top-account-users">0 users</div>
+                    </div>
+                    <div class="gs-kpi-card cyan">
+                        <div class="gs-kpi-label">Top User</div>
+                        <div class="gs-kpi-value" id="gs-kpi-top-user">—</div>
+                        <div class="gs-kpi-detail" id="gs-kpi-top-user-company">—</div>
+                    </div>
+                    <div class="gs-kpi-card amber">
+                        <div class="gs-kpi-label">Monthly Active Accounts</div>
+                        <div class="gs-kpi-value" id="gs-kpi-maa">0</div>
+                        <div class="gs-kpi-detail" id="gs-kpi-maa-detail">Last 30 days</div>
+                    </div>
+                    <div class="gs-kpi-card green">
+                        <div class="gs-kpi-label">Monthly Active Users</div>
+                        <div class="gs-kpi-value" id="gs-kpi-mau">0</div>
+                        <div class="gs-kpi-detail" id="gs-kpi-mau-detail">Last 30 days</div>
+                    </div>
+                </div>
+
+                <div class="gs-card">
+                    <div class="gs-card-title">Top 10 Accounts</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
+                        <div style="overflow-x: auto;">
+                            <table class="gs-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30px;"></th>
+                                        <th>Account Name</th>
+                                        <th style="text-align: right;">Users</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gs-accounts-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="gs-chart-container" style="height: 350px;">
+                            <canvas id="gs-accountsBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gs-card">
+                    <div class="gs-card-title">Top 10 Users</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
+                        <div style="overflow-x: auto;">
+                            <table class="gs-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30px;"></th>
+                                        <th>User Name</th>
+                                        <th>Account</th>
+                                        <th style="text-align: right;">Events</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gs-users-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="gs-chart-container" style="height: 350px;">
+                            <canvas id="gs-usersDoughnut"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gs-card">
+                    <div class="gs-card-title">Feature Usage</div>
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 16px;">
+                        <div>
+                            <div style="font-size: 13px; color: var(--muted); margin-bottom: 8px;">Top-Level Feature Usage</div>
+                            <div class="gs-chart-container" style="height: 280px;">
+                                <canvas id="gs-featurePieChart"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 13px; color: var(--muted); margin-bottom: 8px;">Sub-Feature Breakdown</div>
+                            <div class="gs-chart-container" style="height: 280px;">
+                                <canvas id="gs-subFeatureBarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <label for="gs-featureFilter" style="font-size: 13px; color: var(--muted);">Filter by feature:</label>
+                            <select id="gs-featureFilter" style="background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 13px;">
+                                <option value="">All Features</option>
+                            </select>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="gs-table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Account</th>
+                                        <th>Sector</th>
+                                        <th>Features Used</th>
+                                        <th style="text-align: right;">Total Events</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gs-featureTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gs-card">
+                    <div class="gs-card-title">MoM Trends</div>
+                    <div class="gs-mom-grid">
+                        <div class="gs-chart-container">
+                            <canvas id="gs-newUsersLine"></canvas>
+                        </div>
+                        <div class="gs-chart-container">
+                            <canvas id="gs-activeUsersLine"></canvas>
+                        </div>
+                        <div class="gs-chart-container">
+                            <canvas id="gs-newAccountsLine"></canvas>
+                        </div>
+                        <div class="gs-chart-container">
+                            <canvas id="gs-activeAccountsLine"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gs-footer">
+                    Last updated: <span id="gs-last-updated">—</span> · Cache age: <span id="gs-cache-age">—</span>
+                </div>
+            </div>
+
+            <!-- ============= FAQ VIEW ============= -->
+            <div id="view-helpfaq" class="view">
+                <div id="faq-error-banner"></div>
+
+                <div class="faq-header">Product Feedback Dashboard</div>
+
+                <div class="faq-controls">
+                    <select id="faq-filterTimeRange" aria-label="Filter by time range">
+                        <option value="1">Last month</option>
+                        <option value="3">Last 3 months</option>
+                        <option value="6" selected>Last 6 months</option>
+                        <option value="12">Last 12 months</option>
+                    </select>
+                    <select id="faq-filterFeature" aria-label="Filter by feature">
+                        <option value="">All Features</option>
+                    </select>
+                    <select id="faq-filterStatus" aria-label="Filter by status">
+                        <option value="">All Statuses</option>
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                    <select id="faq-filterPriority" aria-label="Filter by priority">
+                        <option value="">All Priorities</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                    <input type="text" id="faq-searchInput" placeholder="Search issues..." aria-label="Search issues">
+                </div>
+
+                <div class="faq-kpi-row" id="faq-kpiRow"></div>
+
+                <div class="faq-charts-row">
+                    <div class="faq-chart-card">
+                        <div class="faq-chart-title">Issues by Feature</div>
+                        <div class="faq-chart-container">
+                            <canvas id="faq-chartByFeature"></canvas>
+                        </div>
+                    </div>
+                    <div class="faq-chart-card">
+                        <div class="faq-chart-title">Resolution Rate</div>
+                        <div class="faq-chart-container">
+                            <canvas id="faq-chartResolution"></canvas>
+                        </div>
+                    </div>
+                    <div class="faq-chart-card">
+                        <div class="faq-chart-title">Issues Over Time</div>
+                        <div class="faq-chart-container">
+                            <canvas id="faq-chartTimeline"></canvas>
+                        </div>
+                    </div>
+                    <div class="faq-chart-card">
+                        <div class="faq-chart-title">Top Reporters</div>
+                        <div class="faq-chart-container">
+                            <canvas id="faq-chartReporters"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-table-section">
+                    <div class="faq-table-tabs">
+                        <button class="faq-tab active" data-status="">All Issues</button>
+                        <button class="faq-tab" data-status="Open">Open</button>
+                        <button class="faq-tab" data-status="Closed">Closed</button>
+                    </div>
+                    <table class="faq-table">
+                        <thead>
+                            <tr>
+                                <th style="cursor: pointer;" onclick="window.FAQ.sortTable('date')">Date</th>
+                                <th style="cursor: pointer;" onclick="window.FAQ.sortTable('title')">Issue</th>
+                                <th style="cursor: pointer;" onclick="window.FAQ.sortTable('feature')">Feature</th>
+                                <th style="cursor: pointer;" onclick="window.FAQ.sortTable('reporter')">Reporter</th>
+                                <th style="cursor: pointer;" onclick="window.FAQ.sortTable('priority')">Priority</th>
+                                <th style="cursor: pointer;" onclick="window.FAQ.sortTable('status')">Status</th>
+                                <th>Resolution</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faq-issueTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="faq-footer">
+                    Tracking issues from #help-faq channel
+                </div>
+            </div>
+
+            <!-- ============= DATAPOINTS VIEW ============= -->
+            <div id="view-datapoints" class="view">
+                <div id="dp-loadSection">
+                    <div class="dp-header">Datapoint Usage Tracker</div>
+                    <div id="dp-uploadZone">
+                        <div class="dp-upload-icon">📁</div>
+                        <div class="dp-upload-text">Drag & drop CSV file or click to select</div>
+                        <div class="dp-upload-hint">Accepts Gainsight export format (TransactionDate, Organization, DatapointsChange, etc.)</div>
+                    </div>
+                    <input type="file" id="dp-fileInput" accept=".csv">
+                    <button id="dp-clearBtn" class="secondary" style="margin-top: 12px; display: none;">Clear Data</button>
+                </div>
+
+                <div id="dp-dashboard" style="display: none;">
+                    <div class="dp-dashboard-header">
+                        <div class="dp-header">Datapoint Usage Tracker</div>
+                        <div class="dp-dashboard-actions">
+                            <button id="dp-reuploadBtn" class="dp-action-btn"><i class="ph ph-upload-simple"></i> Upload New CSV</button>
+                            <button id="dp-clearBtn2" class="dp-action-btn dp-action-btn-danger"><i class="ph ph-trash"></i> Clear Data</button>
+                        </div>
+                    </div>
+                    <div class="dp-kpi-grid">
+                        <div class="dp-kpi-card used">
+                            <div class="dp-kpi-label">Used This Week</div>
+                            <div class="dp-kpi-value" id="dp-kpi-used-week">0</div>
+                            <div class="dp-breakdown" id="dp-breakdown-used-week"></div>
+                        </div>
+                        <div class="dp-kpi-card used">
+                            <div class="dp-kpi-label">Used This Month</div>
+                            <div class="dp-kpi-value" id="dp-kpi-used-month">0</div>
+                            <div class="dp-breakdown" id="dp-breakdown-used-month"></div>
+                        </div>
+                        <div class="dp-kpi-card added">
+                            <div class="dp-kpi-label">Added This Week</div>
+                            <div class="dp-kpi-value" id="dp-kpi-added-week">0</div>
+                            <div class="dp-breakdown" id="dp-breakdown-added-week"></div>
+                        </div>
+                        <div class="dp-kpi-card added">
+                            <div class="dp-kpi-label">Added This Month</div>
+                            <div class="dp-kpi-value" id="dp-kpi-added-month">0</div>
+                            <div class="dp-breakdown" id="dp-breakdown-added-month"></div>
+                        </div>
+                    </div>
+
+                    <div class="dp-filter-bar">
+                        <select id="dp-filterOrgType" aria-label="Filter by org type">
+                            <option value="">All Orgs</option>
+                            <option value="external">External</option>
+                            <option value="internal">Internal</option>
+                        </select>
+                        <div class="dp-toggle-group">
+                            <button class="dp-toggle-btn active" data-period="weekly">Weekly</button>
+                            <button class="dp-toggle-btn" data-period="monthly">Monthly</button>
+                        </div>
+                        <select id="dp-filterRange" aria-label="Filter by date range">
+                            <option value="all">All Time</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                        </select>
+                    </div>
+
+                    <div class="dp-charts-grid">
+                        <div class="dp-chart-card">
+                            <div class="dp-chart-title">Datapoint Usage</div>
+                            <div class="dp-chart-container">
+                                <canvas id="dp-chartUsage"></canvas>
+                            </div>
+                        </div>
+                        <div class="dp-chart-card">
+                            <div class="dp-chart-title">Datapoint Additions</div>
+                            <div class="dp-chart-container">
+                                <canvas id="dp-chartAdditions"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dp-table-card">
+                        <div class="dp-table-title">Org Breakdown</div>
+                        <table class="dp-table">
+                            <thead>
+                                <tr>
+                                    <th style="cursor: pointer;" onclick="window.DP.sortOrgTable('org')">Organization</th>
+                                    <th style="cursor: pointer;" onclick="window.DP.sortOrgTable('type')">Type</th>
+                                    <th style="text-align: right; cursor: pointer;" onclick="window.DP.sortOrgTable('used')">Used (This Period)</th>
+                                    <th style="text-align: right;">Added (This Period)</th>
+                                    <th>Reason</th>
+                                    <th style="text-align: center;">Paid</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dp-tblOrg"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="dp-footer">
+                        CSV data loaded locally · Export to continue with new data
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-    <div class="live-dot loading" id="live-dot"></div>
-    <span id="last-updated" style="color:var(--muted);font-size:12px;">Loading…</span>
-    <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard(false)" disabled>↻ Refresh</button>
-    <button class="refresh-btn" id="force-refresh-btn" onclick="loadDashboard(true)" disabled style="background:rgba(244,63,94,0.1);border-color:rgba(244,63,94,0.3);color:#fca5a5;">⟳ Force Refresh</button>
-    <div class="badge" id="range-badge">Live Data</div>
-  </div>
-</header>
 
-<div class="container">
+    <script>
+        /* WCAG: Chart.js accessibility defaults */
+        Chart.defaults.elements.line.borderWidth = 2.5;
+        Chart.defaults.elements.point.radius = 5;
+        Chart.defaults.elements.point.hoverRadius = 8;
+        Chart.defaults.elements.point.borderWidth = 2;
+        Chart.defaults.elements.point.borderColor = '#222636';
+        Chart.defaults.elements.bar.borderWidth = 1;
+        Chart.defaults.elements.bar.borderColor = '#222636';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
 
-  <!-- KPI Row -->
-  <div class="kpi-grid">
-    <div class="kpi-card blue">
-      <div class="kpi-icon">🏢</div>
-      <div class="kpi-label">Top Account</div>
-      <div class="kpi-value" style="font-size:20px;margin-top:4px;" id="kpi-top-account"><div class="skeleton" style="width:120px;height:20px;"></div></div>
-      <div class="kpi-sub" id="kpi-top-account-sub"><div class="skeleton" style="width:160px;height:12px;margin-top:4px;"></div></div>
-    </div>
-    <div class="kpi-card cyan">
-      <div class="kpi-icon">👤</div>
-      <div class="kpi-label">Top User</div>
-      <div class="kpi-value" style="font-size:20px;margin-top:4px;" id="kpi-top-user"><div class="skeleton" style="width:120px;height:20px;"></div></div>
-      <div class="kpi-sub" id="kpi-top-user-sub"><div class="skeleton" style="width:160px;height:12px;margin-top:4px;"></div></div>
-    </div>
-    <div class="kpi-card amber">
-      <div class="kpi-icon">📊</div>
-      <div class="kpi-label" id="kpi-active-label">Active Users</div>
-      <div class="kpi-value" id="kpi-user-count"><div class="skeleton" style="width:60px;height:32px;"></div></div>
-      <div class="kpi-sub" id="kpi-active-sub">Active in selected range</div>
-    </div>
-    <div class="kpi-card green">
-      <div class="kpi-icon">🆕</div>
-      <div class="kpi-label">New Sign-ups</div>
-      <div class="kpi-value" id="kpi-signups"><div class="skeleton" style="width:60px;height:32px;"></div></div>
-      <div class="kpi-sub" id="kpi-signups-sub">Past 6 months</div>
-    </div>
-  </div>
+        /* ============= ROUTER ============= */
+        const ROUTER = (() => {
+            let initialized = {};
 
-  <!-- Top Accounts -->
-  <div class="section-title" id="accounts-title">Top 10 Accounts by Total Visits <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="accounts-range-note">· Last 6 Months · excl. grandviewresearch, neoimpact &amp; test accounts</span></div>
-  <div class="row row-65-35">
-    <div class="card">
-      <div class="card-title">Account Rankings <span class="tag" id="acct-rank-tag">by total user visits · 6 months</span></div>
-      <table>
-        <thead><tr><th>#</th><th>Account</th><th>Sector</th><th>Users</th><th>Total Visits</th><th>Top Features</th><th>Last Seen</th></tr></thead>
-        <tbody id="accounts-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-title">Visit Distribution</div>
-      <div class="chart-wrap" style="height:320px;"><canvas id="accountsBarChart"></canvas></div>
-    </div>
-  </div>
+            function navigate(hash) {
+                const views = ['gainsight', 'helpfaq', 'datapoints'];
+                views.forEach(v => {
+                    document.getElementById('view-' + v).style.display = 'none';
+                    document.querySelector(`[data-view="${v}"]`).classList.remove('active');
+                });
 
-  <!-- Top Users -->
-  <div class="section-title" style="margin-top:8px;">Top 10 Users <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="users-range-note">· Last 6 Months · excl. @manifestclimate @grandviewresearch @neoimpact</span></div>
-  <div class="row row-65-35">
-    <div class="card">
-      <div class="card-title">User Rankings <span class="tag" id="user-rank-tag">by visit count · 6 months</span></div>
-      <table>
-        <thead><tr><th>#</th><th>Name</th><th>Company</th><th>Features Used</th><th>Use Cases</th><th>Visits</th><th>Last Seen</th></tr></thead>
-        <tbody id="users-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading…</td></tr></tbody>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-title">Visit Share by User</div>
-      <div class="chart-wrap" style="height:320px;display:flex;align-items:center;justify-content:center;"><canvas id="usersDoughnut"></canvas></div>
-    </div>
-  </div>
+                const target = (hash.replace('#/', '') || 'gainsight').toLowerCase();
+                if (views.includes(target)) {
+                    document.getElementById('view-' + target).style.display = 'block';
+                    document.querySelector(`[data-view="${target}"]`).classList.add('active');
 
-  <!-- Feature Usage -->
-  <div class="section-title" style="margin-top:8px;">Feature Usage Breakdown <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="feat-range-note">· Last 6 Months</span></div>
-  <div class="row row-2">
-    <div class="card">
-      <div class="card-title">Feature Usage <span class="tag">active users by role · incl. sub-features</span></div>
-      <div id="featureHierarchy" style="padding:4px 0;overflow-y:auto;max-height:320px;"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Feature Mix — Top Accounts <span class="tag">by top-level feature access</span></div>
-      <div class="chart-wrap" style="height:280px;"><canvas id="featureAccountRadar"></canvas></div>
-    </div>
-  </div>
+                    // Lazy init
+                    if (!initialized[target]) {
+                        if (target === 'gainsight') window.GS.init();
+                        else if (target === 'helpfaq') window.FAQ.init();
+                        else if (target === 'datapoints') window.DP.init();
+                        initialized[target] = true;
+                    }
+                }
+            }
 
-  <!-- MoM Section -->
-  <div class="section-title" style="margin-top:8px;" id="mom-section-title">Month-over-Month Trends <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;" id="mom-range-note">· Last 6 Months</span></div>
-  <div class="row row-2">
-    <div class="card">
-      <div class="card-title">New User Sign-ups per Month</div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="newUsersLine"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Active Users per Month <span class="tag">by last-seen date</span></div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="activeUsersLine"></canvas></div>
-    </div>
-  </div>
-  <div class="row row-2">
-    <div class="card">
-      <div class="card-title">New Accounts per Month</div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="newAccountsLine"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Active Accounts per Month <span class="tag">by last-seen date</span></div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="activeAccountsLine"></canvas></div>
-    </div>
-  </div>
+            window.addEventListener('hashchange', () => navigate(location.hash));
 
-  <div class="card" style="margin-bottom:28px;">
-    <div class="card-title">New User Sign-ups — Monthly Breakdown</div>
-    <div class="mom-grid" id="momGrid"></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:8px;">Based on signUpDate. ▲ = higher than prior month.</div>
-  </div>
+            document.querySelectorAll('[data-view]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const view = el.getAttribute('data-view');
+                    location.hash = `#/${view}`;
+                });
+            });
 
-</div>
+            return { navigate };
+        })();
 
-<footer id="footer">Gainsight PX · Live data · Excl. manifestclimate, grandviewresearch, neoimpact &amp; test accounts</footer>
+        // Default route
+        if (!location.hash) location.hash = '#/gainsight';
+        else ROUTER.navigate(location.hash);
 
-<script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
-const PROXY_URL = '/.netlify/functions/gainsight-proxy';
-const EXCLUDE_DOMAINS  = ['manifestclimate', 'grandviewresearch', 'neoimpact'];
-const EXCLUDE_ACCT_NAMES = ['akshay testing', 'archana testing'];
+        /* ============= GAINSIGHT (GS) ============= */
+        window.GS = (() => {
+            const EXCLUDE_DOMAINS = ['manifestclimate', 'grandviewresearch', 'neoimpact'];
+            const EXCLUDE_ACCT_NAMES = ['akshay testing', 'archana testing'];
+            const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+            const PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
 
-// Time range options
-const RANGE_MS = {
-  '1w':  7  * 24 * 60 * 60 * 1000,
-  '1m':  30 * 24 * 60 * 60 * 1000,
-  '3m':  90 * 24 * 60 * 60 * 1000,
-  '6m': 180 * 24 * 60 * 60 * 1000,
-};
-const RANGE_LABELS = {
-  '1w': 'Last 7 Days',
-  '1m': 'Last 30 Days',
-  '3m': 'Last 3 Months',
-  '6m': 'Last 6 Months',
-};
-let currentRange = '6m';
-let rawData = null; // stored after API fetch — reused when range changes without re-fetching
+            // Feature hierarchy: top-level → sub-features
+            const FEATURE_HIERARCHY = {
+                'Workspace': { color: '#22d3ee', subs: ['ClimateAction', 'DisclosureIndex', 'ClimateProfile', 'Progress'] },
+                'Tracker': { color: '#6366f1', subs: ['Data', 'Insights', 'BestPractices'] },
+                'Compliance': { color: '#10b981', subs: ['Assessments', 'DisclosureSearch', 'Compare'] },
+                'Integrations': { color: '#f59e0b', subs: [] },
+            };
+            const TOP_FEATURES = Object.keys(FEATURE_HIERARCHY);
+            const SUB_TO_PARENT = {};
+            Object.entries(FEATURE_HIERARCHY).forEach(([parent, cfg]) => {
+                cfg.subs.forEach(sub => { SUB_TO_PARENT[sub] = parent; });
+            });
 
-// ─── PALETTE ─────────────────────────────────────────────────────────────────
-const PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
+            // Sub-feature display names
+            const SUB_DISPLAY = {
+                'ClimateAction': 'Climate Action', 'DisclosureIndex': 'Disclosure Index',
+                'ClimateProfile': 'Climate Profile', 'Progress': 'Progress',
+                'Data': 'Data', 'Insights': 'Insights', 'BestPractices': 'Best Practices',
+                'Assessments': 'Assessments', 'DisclosureSearch': 'Disclosure Search', 'Compare': 'Compare',
+            };
 
-// ─── CHART INSTANCES ─────────────────────────────────────────────────────────
-let charts = {};
-function destroyCharts() { Object.values(charts).forEach(c => c && c.destroy()); charts = {}; }
+            // Map page views to sub-features
+            const PAGE_TO_SUB = {
+                'View Page - Home':'ClimateAction','View Page - Workspace V2':'ClimateAction',
+                'View Page - Climate Actions':'ClimateAction',
+                'View Page - Disclosure Index':'DisclosureIndex',
+                'View Page - Climate Profile':'ClimateProfile',
+                'View Page - Tracker Data View':'Data','View Page - Tracker Dashboard':'Data',
+                'View Page - Select Standard(s)':'Data','View Page - Summary':'Data',
+                'Tracker Reference':'Data',
+                'View Page - All Disclosures':'Assessments','View Page - Disclosure Details':'Assessments',
+                'View Page - Disclosure Search':'DisclosureSearch',
+                'View Page - Comparison View':'Compare',
+                'View Page - MCP Documentation':'Integrations','View Page - MCP Secreat Keys':'Integrations',
+                'MCP Documentation tab select':'Integrations',
+                'Disclosure clickthrough rate':'Assessments',
+            };
 
-// ─── FEATURE HELPERS ─────────────────────────────────────────────────────────
-// Hierarchical feature taxonomy:
-//   Tracker      → Insights, Data
-//   Compliance   → Disclosure Search, Compare, Disclosures
-//   Workspace    → Climate Profile, Disclosure Index, Climate Action
-//   Integrations → (no sub-features)
-const FEATURE_TREE = {
-  'Tracker':      { class:'feat-tracker',      color:'#6366f1', subs:['Insights','Data'] },
-  'Compliance':   { class:'feat-compliance',   color:'#f43f5e', subs:['Disclosure Search','Compare','Disclosures'] },
-  'Workspace':    { class:'feat-workspace',    color:'#22d3ee', subs:['Climate Profile','Disclosure Index','Climate Action'] },
-  'Integrations': { class:'feat-integrations', color:'#10b981', subs:[] },
-};
-const PAGE_TO_FEATURE = {
-  'View Page - Home':'Workspace',
-  'View Page - Workspace V2':'Workspace',
-  'View Page - Tracker Data View':'Tracker',
-  'View Page - Tracker Dashboard':'Tracker',
-  'View Page - Select Standard(s)':'Tracker',
-  'View Page - Summary':'Tracker',
-  'View Page - All Disclosures':'Compliance',
-  'View Page - Disclosure Details':'Compliance',
-  'View Page - Disclosure Search':'Compliance',
-  'View Page - Disclosure Index':'Compliance',
-  'View Page - Comparison View':'Compliance',
-  'View Page - MCP Documentation':'Integrations',
-  'View Page - MCP Secreat Keys':'Integrations',
-  'View Page - Climate Actions':'Workspace',
-  'View Page - Climate Profile':'Workspace',
-  'Tracker Reference':'Tracker',
-  'MCP Documentation tab select':'Integrations',
-  'Disclosure clickthrough rate':'Compliance',
-};
-function featTags(feats) {
-  return `<div class="feat-tags">${feats.map(f=>`<span class="feat-tag ${(FEATURE_TREE[f]||{}).class||'feat-other'}">${f}</span>`).join('')}</div>`;
-}
-function inferFeatures(user) {
-  const role = (user.role||'').toLowerCase();
-  if (role === 'account owner') return ['Tracker','Compliance','Workspace','Integrations'];
-  const feats = [];
-  if (role.includes('tracker'))   feats.push('Tracker');
-  if (role.includes('workspace')) { feats.push('Workspace'); feats.push('Compliance'); }
-  return feats.length ? feats : ['Workspace'];
-}
-function inferUseCase(user) {
-  const attrs = user.customAttributes || {};
-  return attrs.ManifestUsages
-    ? attrs.ManifestUsages.split(',').map(s=>s.trim()).join(' · ')
-    : '—';
-}
+            // Map sub-feature to parent (Integrations is its own parent)
+            function getParentFeature(sub) {
+                return SUB_TO_PARENT[sub] || (sub === 'Integrations' ? 'Integrations' : 'Workspace');
+            }
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-function setStep(msg) { document.getElementById('loading-step').textContent = msg; }
+            const FEAT_CLASS = {};
+            TOP_FEATURES.forEach(f => { FEAT_CLASS[f] = 'feat-' + f.toLowerCase(); });
+            // Also add sub-feature classes that inherit parent color
+            Object.entries(SUB_TO_PARENT).forEach(([sub]) => { FEAT_CLASS[sub] = 'feat-' + getParentFeature(sub).toLowerCase(); });
 
-async function fetchFromProxy(forceRefresh = false) {
-  const url = forceRefresh ? `${PROXY_URL}?refresh=true` : PROXY_URL;
-  setStep('Fetching data from server…');
-  const res = await fetch(url);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Proxy error ${res.status}`);
-  }
-  return res.json();
-}
+            const CORE_FEATURES = TOP_FEATURES;
 
-// ─── RANGE SELECTOR ──────────────────────────────────────────────────────────
-function setRange(range) {
-  currentRange = range;
-  document.querySelectorAll('.range-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.range === range);
-  });
-  if (rawData) {
-    const data = processData(rawData.users, rawData.accounts, range);
-    renderDashboard(data, rawData.acctMap);
-  }
-}
+            // HubSpot exclusion list (loaded async)
+            let _excludedNames = new Set();
 
-// ─── PROCESS DATA ─────────────────────────────────────────────────────────────
-function isExcluded(email) {
-  const e = (email||'').toLowerCase();
-  return EXCLUDE_DOMAINS.some(d => e.includes(d));
-}
+            let charts = {};
+            let _lastData = null; // Store last processed data for filter re-renders
 
-function getMonths(rangeKey) {
-  const numMonths = rangeKey === '1w' ? 2 : rangeKey === '1m' ? 2 : rangeKey === '3m' ? 3 : 6;
-  const now = new Date();
-  const months = [];
-  for (let i = numMonths - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const label = d.toLocaleString('default',{month:'short',year:'2-digit'});
-    months.push({ key, label });
-  }
-  // Ensure current month is present
-  const cur = new Date(now.getFullYear(), now.getMonth(), 1);
-  const curKey = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;
-  if (!months.find(m => m.key === curKey)) {
-    months.push({ key: curKey, label: cur.toLocaleString('default',{month:'short',year:'2-digit'}) });
-  }
-  return months;
-}
+            function destroyCharts() {
+                Object.values(charts).forEach(c => c && c.destroy());
+                charts = {};
+            }
 
-function processData(users, accounts, rangeKey) {
-  rangeKey = rangeKey || '6m';
-  const rangeMs = RANGE_MS[rangeKey];
-  const now = Date.now();
-  const rangeStart = now - rangeMs;
+            function getSelectedFeatures() {
+                const checkboxes = document.querySelectorAll('#gs-featureMultiDropdown input[type="checkbox"]');
+                return [...checkboxes].filter(cb => cb.checked).map(cb => cb.value);
+            }
 
-  const months    = getMonths(rangeKey);
-  const monthKeys = months.map(m => m.key);
+            function getTimePeriodMonths() {
+                return parseInt(document.getElementById('gs-timePeriodFilter')?.value || '6');
+            }
 
-  // Build account map
-  const acctMap = {};
-  accounts.forEach(a => { acctMap[a.id] = a; });
+            function featTags(feats) {
+                return `<div class="feat-tags">${feats.map(f=>`<span class="feat-tag ${FEAT_CLASS[f]||'feat-other'}">${SUB_DISPLAY[f] || f}</span>`).join('')}</div>`;
+            }
 
-  // All non-excluded users
-  const clean = users.filter(u => !isExcluded(u.email));
-  // Users active within the selected range (last seen in period)
-  const cleanInRange = clean.filter(u => u.lastSeenDate && u.lastSeenDate >= rangeStart);
+            function inferFeatures(user) {
+                // Returns sub-features based on user role
+                const role = (user.role||'').toLowerCase();
+                const feats = [];
+                if (role.includes('workspace')) feats.push('ClimateAction','DisclosureIndex','ClimateProfile','Progress');
+                if (role.includes('tracker')) feats.push('Data','Insights','BestPractices');
+                if (role.includes('compliance') || role.includes('disclosure')) feats.push('Assessments','DisclosureSearch','Compare');
+                if (role === 'account owner') feats.push('ClimateAction','DisclosureIndex','ClimateProfile','Progress','Data','Insights','BestPractices','Assessments','DisclosureSearch','Compare');
+                return feats.length ? [...new Set(feats)] : ['ClimateAction'];
+            }
 
-  // Top users: active in range, ranked by all-time visits
-  const topUsers = [...cleanInRange]
-    .sort((a,b) => (b.numberOfVisits||0) - (a.numberOfVisits||0))
-    .slice(0,10);
+            function inferTopFeatures(user) {
+                const subs = inferFeatures(user);
+                return [...new Set(subs.map(s => getParentFeature(s)))];
+            }
 
-  // Top accounts: users active in range, sum their all-time visits
-  const acctVisits = {}, acctUserCount = {};
-  cleanInRange.forEach(u => {
-    if (!u.accountId) return;
-    const acct = acctMap[u.accountId];
-    const name = (acct?.name||'').toLowerCase();
-    if (EXCLUDE_ACCT_NAMES.some(x => name.includes(x))) return;
-    acctVisits[u.accountId]    = (acctVisits[u.accountId]||0) + (u.numberOfVisits||0);
-    acctUserCount[u.accountId] = (acctUserCount[u.accountId]||0) + 1;
-  });
-  const topAccountIds = Object.entries(acctVisits)
-    .sort((a,b) => b[1]-a[1]).slice(0,10).map(([id]) => id);
+            async function loadExclusions() {
+                try {
+                    const res = await fetch('/exclusions.json');
+                    if (res.ok) {
+                        const data = await res.json();
+                        _excludedNames = new Set(data.excludedNames || []);
+                        console.log(`Loaded ${_excludedNames.size} excluded company names`);
+                    }
+                } catch (e) {
+                    console.log('Could not load exclusions.json, no HubSpot filtering:', e.message);
+                }
+            }
 
-  // MoM data — only within range
-  const momNewUsers      = Object.fromEntries(monthKeys.map(k => [k,0]));
-  const momActiveUsers   = Object.fromEntries(monthKeys.map(k => [k, new Set()]));
-  const momNewAccounts   = Object.fromEntries(monthKeys.map(k => [k,0]));
-  const momActiveAccounts = Object.fromEntries(monthKeys.map(k => [k, new Set()]));
+            function inferUseCase(user) {
+                const attrs = user.customAttributes || {};
+                return attrs.ManifestUsages
+                    ? attrs.ManifestUsages.split(',').map(s=>s.trim()).join(' · ')
+                    : '—';
+            }
 
-  clean.forEach(u => {
-    if (u.signUpDate && u.signUpDate >= rangeStart) {
-      const mk = new Date(u.signUpDate).toISOString().slice(0,7);
-      if (momNewUsers[mk] !== undefined) momNewUsers[mk]++;
-    }
-    if (u.lastSeenDate && u.lastSeenDate >= rangeStart) {
-      const mk = new Date(u.lastSeenDate).toISOString().slice(0,7);
-      if (momActiveUsers[mk]) momActiveUsers[mk].add(u.identifyId);
-    }
-  });
-  accounts.forEach(a => {
-    if (a.createDate && a.createDate >= rangeStart) {
-      const mk = new Date(a.createDate).toISOString().slice(0,7);
-      if (momNewAccounts[mk] !== undefined) momNewAccounts[mk]++;
-    }
-    if (a.lastSeenDate && a.lastSeenDate >= rangeStart) {
-      const mk = new Date(a.lastSeenDate).toISOString().slice(0,7);
-      if (momActiveAccounts[mk]) momActiveAccounts[mk].add(a.id);
-    }
-  });
+            const CACHE_KEY = 'gainsight_px_cache';
+            const CACHE_TTL_MS = 60 * 60 * 1000;
 
-  // ── Feature usage: derived from user role fields ──
-  // Count how many active users in range have access to each feature
-  const globalFeatCounts = {};
-  // Per-account feature breakdown (for radar chart)
-  const acctEventFeats = {};
-  const userEventFeats = {};
+            function loadCache() {
+                const data = localStorage.getItem(CACHE_KEY);
+                if (!data) return null;
+                try {
+                    const parsed = JSON.parse(data);
+                    const age = Date.now() - parsed.savedAt;
+                    return age < CACHE_TTL_MS ? parsed : null;
+                } catch { return null; }
+            }
 
-  cleanInRange.forEach(u => {
-    const feats = inferFeatures(u);
-    // Global feature counts (unique user per feature)
-    feats.forEach(f => {
-      globalFeatCounts[f] = (globalFeatCounts[f]||0) + 1;
-    });
-    // Account-level breakdown
-    if (u.accountId) {
-      acctEventFeats[u.accountId] = acctEventFeats[u.accountId] || {};
-      feats.forEach(f => {
-        acctEventFeats[u.accountId][f] = (acctEventFeats[u.accountId][f]||0) + 1;
-      });
-    }
-    // User-level (for top user feature display)
-    if (u.identifyId) {
-      userEventFeats[u.identifyId] = userEventFeats[u.identifyId] || {};
-      feats.forEach(f => {
-        userEventFeats[u.identifyId][f] = (userEventFeats[u.identifyId][f]||0) + 1;
-      });
-    }
-  });
+            function saveCache(users, accounts, cacheInfo) {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    users, accounts, ...cacheInfo, savedAt: Date.now()
+                }));
+            }
 
-  // New sign-ups in range
-  const newSignups = clean.filter(u => u.signUpDate && u.signUpDate >= rangeStart).length;
+            function clearCache() {
+                localStorage.removeItem(CACHE_KEY);
+            }
 
-  return {
-    topUsers, topAccountIds, acctMap, acctVisits, acctUserCount,
-    months, monthKeys, clean, cleanInRange, newSignups,
-    momNewUsers,
-    momActiveUsers:   Object.fromEntries(Object.entries(momActiveUsers).map(([k,v])   => [k,v.size])),
-    momNewAccounts,
-    momActiveAccounts: Object.fromEntries(Object.entries(momActiveAccounts).map(([k,v]) => [k,v.size])),
-    acctEventFeats, userEventFeats, globalFeatCounts,
-    rangeKey, rangeStart,
-  };
-}
+            function getDemoData() {
+                const now = Date.now();
+                const DAY = 86400000;
+                const demoUsers = [
+                    { name: 'Irene Lam', email: 'irene.lam@compass.com', totalEvents: 122, role: 'Account Owner', accountId: 'a1', lastActive: new Date(now - 2*DAY).toISOString() },
+                    { name: 'David Kim', email: 'david.kim@dwsgroup.com', totalEvents: 98, role: 'Tracker User', accountId: 'a3', lastActive: new Date(now - 5*DAY).toISOString() },
+                    { name: 'Sarah Chen', email: 'sarah.chen@empirelife.ca', totalEvents: 87, role: 'Workspace User', accountId: 'a2', lastActive: new Date(now - 10*DAY).toISOString() },
+                    { name: 'James Wilson', email: 'james.wilson@capitalone.com', totalEvents: 74, role: 'Tracker User', accountId: 'a5', lastActive: new Date(now - 15*DAY).toISOString() },
+                    { name: 'Maria Santos', email: 'maria.santos@popularbank.com', totalEvents: 65, role: 'Compliance User', accountId: 'a4', lastActive: new Date(now - 20*DAY).toISOString() },
+                    { name: 'Alex Johansson', email: 'alex.j@tishmanspeyer.com', totalEvents: 58, role: 'Workspace User', accountId: 'a6', lastActive: new Date(now - 30*DAY).toISOString() },
+                    { name: 'Priya Patel', email: 'priya.patel@compass.com', totalEvents: 51, role: 'Tracker User', accountId: 'a1', lastActive: new Date(now - 45*DAY).toISOString() },
+                    { name: 'Tom Nguyen', email: 'tom.nguyen@meta.com', totalEvents: 43, role: 'Account Owner', accountId: 'a10', lastActive: new Date(now - 60*DAY).toISOString() },
+                    { name: 'Lisa Fraser', email: 'lisa.fraser@dwsgroup.com', totalEvents: 39, role: 'Compliance User', accountId: 'a3', lastActive: new Date(now - 90*DAY).toISOString() },
+                    { name: 'Mark O\'Brien', email: 'mark.obrien@capreit.net', totalEvents: 31, role: 'Compliance User', accountId: 'a9', lastActive: new Date(now - 120*DAY).toISOString() },
+                ];
+                // Demo accounts with lastSeenDate derived from most recent user activity
+                const acctActivity = {};
+                demoUsers.forEach(u => {
+                    const t = new Date(u.lastActive).getTime();
+                    if (!acctActivity[u.accountId] || t > acctActivity[u.accountId]) acctActivity[u.accountId] = t;
+                });
+                const demoAccounts = [
+                    { id: 'a1', name: 'Compass Datacenters', userCount: 3, sector: 'Information Technology', lastSeenDate: acctActivity['a1'] || now },
+                    { id: 'a2', name: 'Empire Life', userCount: 2, sector: 'Financials', lastSeenDate: acctActivity['a2'] || now },
+                    { id: 'a3', name: 'DWS Group', userCount: 4, sector: 'Financials', lastSeenDate: acctActivity['a3'] || now },
+                    { id: 'a4', name: 'Popular Bank', userCount: 2, sector: 'Financials', lastSeenDate: acctActivity['a4'] || now },
+                    { id: 'a5', name: 'Capital One', userCount: 3, sector: 'Financials', lastSeenDate: acctActivity['a5'] || now },
+                    { id: 'a6', name: 'Tishman Speyer', userCount: 2, sector: 'Real Estate', lastSeenDate: acctActivity['a6'] || now },
+                    { id: 'a7', name: 'Interface Inc', userCount: 1, sector: 'Materials', lastSeenDate: now - 40*DAY },
+                    { id: 'a8', name: 'Portage Mutual', userCount: 1, sector: 'Financials', lastSeenDate: now - 50*DAY },
+                    { id: 'a9', name: 'CAPREIT', userCount: 2, sector: 'Real Estate', lastSeenDate: acctActivity['a9'] || now },
+                    { id: 'a10', name: 'Meta Platforms', userCount: 3, sector: 'Technology', lastSeenDate: acctActivity['a10'] || now },
+                ];
+                // Return raw shape so it flows through processData() with exclusion filter + active metrics
+                return { users: demoUsers, accounts: demoAccounts, _isDemo: true };
+            }
 
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function fmt(ts) { return ts ? new Date(ts).toISOString().slice(0,10) : 'N/A'; }
-function isRecent(ts, rangeMs) {
-  // "Active" means seen within the current range window
-  return ts && ts >= (Date.now() - (rangeMs || RANGE_MS[currentRange]));
-}
+            async function fetchData(forceRefresh) {
+                const url = forceRefresh
+                    ? '/.netlify/functions/gainsight-proxy?refresh=true'
+                    : '/.netlify/functions/gainsight-proxy';
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`API error ${res.status}`);
+                return res.json();
+            }
 
-function renderDashboard(data) {
-  const {
-    topUsers, topAccountIds, acctMap, acctVisits, acctUserCount,
-    months, monthKeys, clean, cleanInRange, newSignups,
-    momNewUsers, momActiveUsers, momNewAccounts, momActiveAccounts,
-    acctEventFeats, userEventFeats, globalFeatCounts,
-    rangeKey, rangeStart,
-  } = data;
+            function processData(raw, timePeriodMonths, featureFilter) {
+                timePeriodMonths = timePeriodMonths || 6;
+                featureFilter = featureFilter || CORE_FEATURES;
 
-  const rangeLabel = RANGE_LABELS[rangeKey] || 'Past 6 Months';
-  const rangeTagShort = rangeKey === '1w' ? '7 days' : rangeKey === '1m' ? '30 days' : rangeKey === '3m' ? '3 months' : '6 months';
+                const cutoffDate = new Date();
+                cutoffDate.setMonth(cutoffDate.getMonth() - timePeriodMonths);
+                const cutoffMs = cutoffDate.getTime();
+                const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+                const thirtyDayCutoff = Date.now() - thirtyDaysMs;
 
-  // Update range labels throughout
-  ['accounts-range-note','users-range-note','feat-range-note','mom-range-note'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = `· ${rangeLabel}`;
-  });
-  document.getElementById('acct-rank-tag').textContent = `by total user visits · ${rangeTagShort}`;
-  document.getElementById('user-rank-tag').textContent = `by visit count · ${rangeTagShort}`;
-  document.getElementById('kpi-active-sub').textContent = `Active in ${rangeLabel.toLowerCase()}`;
-  document.getElementById('kpi-signups-sub').textContent = rangeLabel;
+                let users = (raw.users || []).filter(u => {
+                    const domain = (u.email || '').split('@')[1] || '';
+                    if (EXCLUDE_DOMAINS.some(d => domain.includes(d))) return false;
+                    // Time period filter
+                    const lastActive = u.lastSeenDate || u.lastActive || u.signUpDate || Date.now();
+                    const lastActiveMs = typeof lastActive === 'number' ? lastActive : new Date(lastActive).getTime();
+                    if (lastActiveMs < cutoffMs) return false;
+                    // Feature filter: keep users whose inferred top-features overlap with selected features
+                    const topFeats = inferTopFeatures(u);
+                    if (!topFeats.some(f => featureFilter.includes(f))) return false;
+                    return true;
+                });
 
-  // KPIs
-  const topAcct = acctMap[topAccountIds[0]];
-  const topUser = topUsers[0];
-  document.getElementById('kpi-top-account').textContent = topAcct?.name?.slice(0,18) || '—';
-  document.getElementById('kpi-top-account-sub').textContent =
-    `${acctVisits[topAccountIds[0]]||0} visits · ${acctUserCount[topAccountIds[0]]||0} users`;
-  const topUserName = `${topUser?.firstName||''} ${topUser?.lastName||''}`.trim() || topUser?.email || '—';
-  document.getElementById('kpi-top-user').textContent = topUserName.split(' ').slice(0,2).join(' ');
-  const topUserAcct = acctMap[topUser?.accountId];
-  document.getElementById('kpi-top-user-sub').textContent =
-    `${topUser?.numberOfVisits||0} visits · ${topUserAcct?.name||topUser?.email?.split('@')[1]||''}`;
-  document.getElementById('kpi-user-count').textContent = cleanInRange.length;
-  document.getElementById('kpi-signups').textContent = newSignups;
+                let accounts = (raw.accounts || []).filter(a => {
+                    if (EXCLUDE_ACCT_NAMES.some(n => a.name.toLowerCase().includes(n.toLowerCase()))) return false;
+                    // HubSpot exclusion filter
+                    if (_excludedNames.size > 0 && _excludedNames.has(a.name.toLowerCase().trim())) return false;
+                    return true;
+                });
 
-  // ── Accounts table ──
-  const aTbody = document.getElementById('accounts-tbody');
-  const maxVisitsA = acctVisits[topAccountIds[0]] || 1;
-  aTbody.innerHTML = '';
-  topAccountIds.forEach((aid, i) => {
-    const a = acctMap[aid] || {};
-    const visits = acctVisits[aid] || 0;
-    const users  = acctUserCount[aid] || 0;
-    const lastSeen = fmt(a.lastSeenDate);
-    const active = isRecent(a.lastSeenDate);
-    const pill = active
-      ? '<span class="status-pill status-active">Active</span>'
-      : '<span class="status-pill status-inactive">Older</span>';
-    const barW = Math.round((visits / maxVisitsA) * 100);
-    const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
-    const evFeats = acctEventFeats[aid] || {};
-    let featsList = Object.entries(evFeats).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([f])=>f);
-    if (!featsList.length) featsList = ['Workspace'];
+                const usersByAcct = {};
+                users.forEach(u => {
+                    const aid = u.accountId;
+                    if (!usersByAcct[aid]) usersByAcct[aid] = [];
+                    usersByAcct[aid].push(u);
+                });
 
-    aTbody.innerHTML += `<tr>
-      <td><span class="rank ${rankClass}">${i+1}</span></td>
-      <td><strong>${a.name||aid.slice(0,12)}</strong><br><span style="font-size:11px;color:var(--muted);">${a.customAttributes?.sector||a.industry||''}</span></td>
-      <td style="color:var(--muted);font-size:12px;">${a.customAttributes?.sector||a.industry||'—'}</td>
-      <td style="text-align:center;"><strong>${users}</strong></td>
-      <td><div class="bar-cell"><div class="mini-bar" style="width:${barW}px;background:linear-gradient(90deg,${PALETTE[i]},${PALETTE[(i+1)%10]});"></div><span class="visits-num">${visits}</span></div></td>
-      <td>${featTags(featsList)}</td>
-      <td>${pill}<span class="date-text" style="margin-left:4px;">${lastSeen}</span></td>
-    </tr>`;
-  });
+                const acctNameById = {};
+                accounts.forEach(a => { acctNameById[a.id] = a.name; });
 
-  // ── Users table ──
-  const uTbody = document.getElementById('users-tbody');
-  const maxVisitsU = topUsers[0]?.numberOfVisits || 1;
-  uTbody.innerHTML = '';
-  topUsers.forEach((u, i) => {
-    const visits = u.numberOfVisits || 0;
-    const barW = Math.round((visits / maxVisitsU) * 100);
-    const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
-    const active = isRecent(u.lastSeenDate);
-    const pill = active
-      ? '<span class="status-pill status-active">Active</span>'
-      : '<span class="status-pill status-inactive">Older</span>';
-    const name = `${u.firstName||''} ${u.lastName||''}`.trim() || u.email;
-    const company = acctMap[u.accountId]?.name || u.email?.split('@')[1] || '—';
-    const evFeats = userEventFeats[u.identifyId] || {};
-    const featsList = Object.entries(evFeats).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([f])=>f);
-    const displayFeats = featsList.length ? featsList : inferFeatures(u);
-    const useCase = inferUseCase(u);
+                accounts = accounts.map(a => {
+                    a.userCount = (usersByAcct[a.id] || []).length;
+                    a.users = usersByAcct[a.id] || [];
+                    return a;
+                }).sort((a, b) => b.userCount - a.userCount);
 
-    uTbody.innerHTML += `<tr>
-      <td><span class="rank ${rankClass}">${i+1}</span></td>
-      <td><strong>${name}</strong><br><span class="email-text">${u.email||''}</span></td>
-      <td><span class="company-text">${company}</span></td>
-      <td>${featTags(displayFeats)}</td>
-      <td><span class="use-case-text">${useCase}</span></td>
-      <td><div class="bar-cell"><div class="mini-bar" style="width:${barW}px;background:linear-gradient(90deg,${PALETTE[i]},${PALETTE[(i+2)%10]});"></div><span class="visits-num">${visits}</span></div></td>
-      <td>${pill}<br><span class="date-text">${fmt(u.lastSeenDate)}</span></td>
-    </tr>`;
-  });
+                // Attach account name to each user for display
+                users.forEach(u => {
+                    u.accountName = acctNameById[u.accountId] || (u.email || '').split('@')[1] || '—';
+                });
 
-  // Destroy existing charts
-  destroyCharts();
+                const topAcct = accounts[0] || { name: '—', userCount: 0 };
+                const sortedByEvents = [...users].sort((a, b) => (b.totalEvents || 0) - (a.totalEvents || 0));
+                const topUser = sortedByEvents[0] || { name: '—', email: '—', totalEvents: 0, accountName: '—' };
 
-  const chartOpts = (extra={}) => ({
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { grid: { color: '#2e3250' }, ticks: { color: '#94a3b8' }, border: { color: '#2e3250' } },
-      y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { size: 11 } }, border: { display: false } }
-    }, ...extra
-  });
+                // Monthly active metrics
+                const monthlyActiveUsers = users.filter(u => {
+                    const ls = u.lastSeenDate || u.lastActive || 0;
+                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= thirtyDayCutoff;
+                }).length;
 
-  // ── Accounts bar chart ──
-  charts.acctBar = new Chart(document.getElementById('accountsBarChart'), {
-    type: 'bar',
-    data: {
-      labels: topAccountIds.map(id => (acctMap[id]?.name||id.slice(0,12)).slice(0,18)),
-      datasets: [{ label: 'Visits', data: topAccountIds.map(id=>acctVisits[id]||0), backgroundColor: PALETTE, borderRadius: 6, borderSkipped: false }]
-    },
-    options: { ...chartOpts(), indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>' '+c.raw+' visits' } } } }
-  });
+                const monthlyActiveAccounts = accounts.filter(a => {
+                    const ls = a.lastSeenDate || 0;
+                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= thirtyDayCutoff;
+                }).length;
 
-  // ── Users doughnut ──
-  charts.userDoughnut = new Chart(document.getElementById('usersDoughnut'), {
-    type: 'doughnut',
-    data: {
-      labels: topUsers.map(u => (u.firstName||u.email?.split('@')[0]||'').slice(0,14)),
-      datasets: [{ data: topUsers.map(u=>u.numberOfVisits||0), backgroundColor: PALETTE, borderColor: '#1a1d27', borderWidth: 2, hoverOffset: 8 }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
-      plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12, padding: 10 } } } }
-  });
+                return {
+                    accounts: accounts.slice(0, 10),
+                    topAccount: topAcct,
+                    users: sortedByEvents.slice(0, 10),
+                    topUser: topUser,
+                    monthlyActiveUsers,
+                    monthlyActiveAccounts,
+                    totalUsers: users.length,
+                    allAccounts: accounts,
+                    allUsers: users,
+                };
+            }
 
-  // ── MoM line / bar charts ──
-  const lineD = (color) => ({ borderColor: color, backgroundColor: color+'22', tension: 0.4, pointBackgroundColor: color, pointRadius: 5, pointHoverRadius: 7, fill: true, borderWidth: 2.5 });
-  const monthLabels    = months.map(m => m.label);
-  const newUsersArr    = monthKeys.map(k => momNewUsers[k]||0);
-  const activeUsersArr = monthKeys.map(k => momActiveUsers[k]||0);
-  const newAcctsArr    = monthKeys.map(k => momNewAccounts[k]||0);
-  const activeAcctsArr = monthKeys.map(k => momActiveAccounts[k]||0);
-  const lineScales = {
-    y: { grid:{color:'#2e3250'}, ticks:{color:'#94a3b8',stepSize:1}, beginAtZero:true, border:{color:'#2e3250'} },
-    x: { grid:{display:false}, ticks:{color:'#94a3b8'}, border:{display:false} }
-  };
+            function renderDashboard(data) {
+                // KPIs
+                document.getElementById('gs-kpi-top-account').textContent = data.topAccount.name || '—';
+                document.getElementById('gs-kpi-top-account-users').textContent = `${data.topAccount.userCount || 0} users`;
 
-  charts.newUsers = new Chart(document.getElementById('newUsersLine'), {
-    type: 'line',
-    data: { labels: monthLabels, datasets: [{ label: 'New Sign-ups', data: newUsersArr, ...lineD('#6366f1') }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
-  charts.activeUsers = new Chart(document.getElementById('activeUsersLine'), {
-    type: 'line',
-    data: { labels: monthLabels, datasets: [{ label: 'Active Users', data: activeUsersArr, ...lineD('#22d3ee') }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
-  charts.newAccts = new Chart(document.getElementById('newAccountsLine'), {
-    type: 'bar',
-    data: { labels: monthLabels, datasets: [{ label: 'New Accounts', data: newAcctsArr, backgroundColor:'#f59e0b', borderRadius:6, borderSkipped:false }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
-  charts.activeAccts = new Chart(document.getElementById('activeAccountsLine'), {
-    type: 'bar',
-    data: { labels: monthLabels, datasets: [{ label: 'Active Accounts', data: activeAcctsArr, backgroundColor:'#10b981', borderRadius:6, borderSkipped:false }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: lineScales }
-  });
+                document.getElementById('gs-kpi-top-user').textContent = data.topUser.name || '—';
+                document.getElementById('gs-kpi-top-user-company').textContent = data.topUser.accountName || '—';
 
-  // ── MoM sign-up heatmap ──
-  const momGrid = document.getElementById('momGrid');
-  momGrid.innerHTML = '';
-  newUsersArr.forEach((val, i) => {
-    const prev = i > 0 ? newUsersArr[i-1] : null;
-    let deltaHtml = '';
-    if (prev !== null) {
-      const diff = val - prev;
-      if (diff > 0)      deltaHtml = `<div class="delta delta-up">▲ ${diff}</div>`;
-      else if (diff < 0) deltaHtml = `<div class="delta delta-down">▼ ${Math.abs(diff)}</div>`;
-      else               deltaHtml = `<div class="delta delta-flat">— 0</div>`;
-    }
-    momGrid.innerHTML += `<div class="mom-cell"><div class="month">${months[i]?.label||''}</div><div class="val">${val}</div>${deltaHtml}</div>`;
-  });
+                document.getElementById('gs-kpi-maa').textContent = data.monthlyActiveAccounts;
+                document.getElementById('gs-kpi-maa-detail').textContent = `of ${data.allAccounts.length} total`;
 
-  // ── Feature hierarchy visualization ──
-  const featHierEl = document.getElementById('featureHierarchy');
-  if (featHierEl) {
-    const topFeats = ['Tracker','Compliance','Workspace','Integrations'];
-    const maxCount = Math.max(...topFeats.map(f => globalFeatCounts[f]||0), 1);
-    featHierEl.innerHTML = topFeats.map(feat => {
-      const count = globalFeatCounts[feat] || 0;
-      const pct   = Math.round((count / maxCount) * 100);
-      const info  = FEATURE_TREE[feat] || {};
-      const cls   = info.class || 'feat-other';
-      const color = info.color || '#94a3b8';
-      const subs  = info.subs || [];
-      const subChips = subs.map(s => `<span class="feat-chip">${s}</span>`).join('');
-      return `<div class="feat-row">
-        <div class="feat-row-header">
-          <span class="feat-tag ${cls}">${feat}</span>
-          <span class="feat-row-count">${count}</span>
-          <span class="feat-row-label">active users</span>
-        </div>
-        <div class="feat-bar-track"><div class="feat-bar-fill" style="width:${pct}%;background:${color};"></div></div>
-        ${subs.length ? `<div class="feat-sub-chips">${subChips}</div>` : ''}
-      </div>`;
-    }).join('');
-  }
+                document.getElementById('gs-kpi-mau').textContent = data.monthlyActiveUsers;
+                document.getElementById('gs-kpi-mau-detail').textContent = `of ${data.totalUsers} total`;
 
-  // ── Radar chart: top accounts by feature mix ──
-  const RADAR_FEATS = ['Tracker','Compliance','Workspace','Integrations'];
-  // Pick top accounts that have feature data
-  const radarAccts = topAccountIds.filter(id => Object.keys(acctEventFeats[id]||{}).length > 0).slice(0,4);
-  const radarColors = ['#6366f1','#22d3ee','#10b981','#f59e0b'];
-  charts.radar = new Chart(document.getElementById('featureAccountRadar'), {
-    type: 'radar',
-    data: {
-      labels: RADAR_FEATS,
-      datasets: radarAccts.length
-        ? radarAccts.map((id,i) => ({
-            label: (acctMap[id]?.name||id.slice(0,12)).slice(0,22),
-            data: RADAR_FEATS.map(f => (acctEventFeats[id]||{})[f]||0),
-            borderColor: radarColors[i], backgroundColor: radarColors[i]+'22',
-            pointBackgroundColor: radarColors[i], borderWidth: 2, pointRadius: 4,
-          }))
-        : [{ label:'No data', data:[0,0,0,0], borderColor:'#2e3250', backgroundColor:'transparent' }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } } },
-      scales: { r: { grid:{color:'#2e3250'}, ticks:{color:'#94a3b8',backdropColor:'transparent',stepSize:1}, pointLabels:{color:'#e2e8f0',font:{size:11}}, angleLines:{color:'#2e3250'} } }
-    }
-  });
-}
+                // Top Accounts Table
+                const acctHtml = data.accounts.map((a, i) => `
+                    <tr>
+                        <td><span class="gs-rank">${i + 1}</span></td>
+                        <td>${a.name}</td>
+                        <td style="text-align: right;">${a.userCount}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('gs-accounts-tbody').innerHTML = acctHtml;
 
-// ─── MAIN LOAD ────────────────────────────────────────────────────────────────
-async function loadDashboard(forceRefresh = false) {
-  const overlay   = document.getElementById('loading-overlay');
-  const dot       = document.getElementById('live-dot');
-  const btn       = document.getElementById('refresh-btn');
-  const forceBtn  = document.getElementById('force-refresh-btn');
-  const errBanner = document.getElementById('error-banner');
+                // Top Users Table
+                const userHtml = data.users.map((u, i) => {
+                    return `
+                        <tr>
+                            <td><span class="gs-rank">${i + 1}</span></td>
+                            <td>${u.name || '—'}</td>
+                            <td>${u.accountName || '—'}</td>
+                            <td style="text-align: right;">${u.totalEvents || 0}</td>
+                        </tr>
+                    `;
+                }).join('');
+                document.getElementById('gs-users-tbody').innerHTML = userHtml;
 
-  overlay.classList.remove('hidden');
-  dot.className = 'live-dot loading';
-  btn.disabled = true;
-  forceBtn.disabled = true;
-  errBanner.classList.remove('visible');
-  document.getElementById('last-updated').textContent = 'Loading…';
+                // Charts
+                destroyCharts();
 
-  try {
-    const result = await fetchFromProxy(forceRefresh);
-    const { users, accounts, cached, cacheAgeMin, nextRefreshMin, fetchedAt, stale } = result;
+                // Accounts Bar Chart
+                const acctCtx = document.getElementById('gs-accountsBarChart')?.getContext('2d');
+                if (acctCtx) {
+                    charts.accountsBar = new Chart(acctCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.accounts.map(a => a.name.substring(0, 20)),
+                            datasets: [{
+                                label: 'Users',
+                                data: data.accounts.map(a => a.userCount),
+                                backgroundColor: data.accounts.map((_, i) => PALETTE[i % PALETTE.length]),
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            indexAxis: 'y',
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                y: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
 
-    setStep('Processing data…');
+                // Users Doughnut Chart
+                const userCtx = document.getElementById('gs-usersDoughnut')?.getContext('2d');
+                if (userCtx) {
+                    charts.usersDoughnut = new Chart(userCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.users.map(u => u.name || '—').slice(0, 5),
+                            datasets: [{
+                                data: data.users.map(u => u.totalEvents || 0).slice(0, 5),
+                                backgroundColor: PALETTE.slice(0, 5),
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0' } } }
+                        }
+                    });
+                }
 
-    // Build account map and store raw data for range-switching
-    const acctMap = {};
-    accounts.forEach(a => { acctMap[a.id] = a; });
-    rawData = { users, accounts, acctMap };
+                // === Feature Usage: compute sub-feature and top-feature aggregates ===
+                const subFeatureMap = {};  // sub-feature → total events
+                const acctSubFeatures = {}; // account → { sub → events }
+                data.allUsers.forEach(u => {
+                    const subs = inferFeatures(u);
+                    subs.forEach(s => {
+                        subFeatureMap[s] = (subFeatureMap[s] || 0) + (u.totalEvents || 1);
+                    });
+                });
+                data.allAccounts.forEach(a => {
+                    const feats = {};
+                    (a.users || []).forEach(u => {
+                        inferFeatures(u).forEach(s => {
+                            feats[s] = (feats[s] || 0) + (u.totalEvents || 1);
+                        });
+                    });
+                    acctSubFeatures[a.name] = feats;
+                });
 
-    const data = processData(users, accounts, currentRange);
-    renderDashboard(data);
+                // Aggregate to top-level
+                const topFeatureMap = {};
+                TOP_FEATURES.forEach(tf => { topFeatureMap[tf] = 0; });
+                Object.entries(subFeatureMap).forEach(([sub, val]) => {
+                    const parent = getParentFeature(sub);
+                    topFeatureMap[parent] = (topFeatureMap[parent] || 0) + val;
+                });
 
-    const fetchedTime = fetchedAt ? new Date(fetchedAt).toLocaleTimeString() : '—';
-    if (cached) {
-      document.getElementById('last-updated').textContent =
-        `${stale ? '⚠ Stale cache' : 'Cached'} · fetched ${cacheAgeMin}m ago · refreshes in ~${nextRefreshMin}m`;
-    } else {
-      document.getElementById('last-updated').textContent =
-        `Live · fetched at ${fetchedTime} · refreshes in ~60m`;
-    }
-    document.getElementById('footer').textContent =
-      `Gainsight PX · ${cached ? 'Cached' : 'Live'} data · Last API fetch ${fetchedTime} · Excl. manifestclimate, grandviewresearch, neoimpact & test accounts`;
+                // Top-Level Pie Chart
+                const pieCtx = document.getElementById('gs-featurePieChart')?.getContext('2d');
+                if (pieCtx) {
+                    const pieLabels = TOP_FEATURES.filter(f => topFeatureMap[f] > 0);
+                    charts.featurePie = new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: pieLabels,
+                            datasets: [{
+                                data: pieLabels.map(f => topFeatureMap[f]),
+                                backgroundColor: pieLabels.map(f => FEATURE_HIERARCHY[f].color),
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 10, font: { size: 12 } } }
+                            }
+                        }
+                    });
+                }
 
-    dot.className = 'live-dot';
-    overlay.classList.add('hidden');
-    btn.disabled = false;
-    forceBtn.disabled = false;
+                // Sub-Feature Grouped Bar Chart (bars colored by parent feature)
+                const barCtx = document.getElementById('gs-subFeatureBarChart')?.getContext('2d');
+                if (barCtx) {
+                    // Build ordered list: group subs by parent, sorted high-to-low within each group
+                    const allSubs = [];
+                    TOP_FEATURES.forEach(parent => {
+                        const subs = (FEATURE_HIERARCHY[parent].subs.length > 0)
+                            ? FEATURE_HIERARCHY[parent].subs
+                            : [parent]; // Integrations has no subs, show itself
+                        subs.forEach(s => {
+                            allSubs.push({ name: s, parent, value: subFeatureMap[s] || 0 });
+                        });
+                    });
+                    // Sort by value descending
+                    allSubs.sort((a, b) => b.value - a.value);
 
-  } catch (err) {
-    overlay.classList.add('hidden');
-    dot.className = 'live-dot error';
-    btn.disabled = false;
-    forceBtn.disabled = false;
-    document.getElementById('last-updated').textContent = 'Error loading data';
-    errBanner.innerHTML = `<strong>⚠️ Error:</strong> ${err.message}`;
-    errBanner.classList.add('visible');
-    console.error('Dashboard load error:', err);
-  }
-}
+                    charts.subFeatureBar = new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: allSubs.map(s => SUB_DISPLAY[s.name] || s.name),
+                            datasets: [{
+                                label: 'Events',
+                                data: allSubs.map(s => s.value),
+                                backgroundColor: allSubs.map(s => FEATURE_HIERARCHY[s.parent]?.color || '#94a3b8'),
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8', maxRotation: 45, font: { size: 11 } },
+                                },
+                            }
+                        }
+                    });
+                }
 
-// Start on load
-loadDashboard();
-</script>
+                // Feature Usage Table — show sub-features per account
+                const allSubsList = [...new Set(Object.values(acctSubFeatures).flatMap(f => Object.keys(f)))].sort();
+                const gsFeatureFilter = document.getElementById('gs-featureFilter');
+                if (gsFeatureFilter) {
+                    // Populate with both top and sub features
+                    const filterOpts = [];
+                    TOP_FEATURES.forEach(tf => {
+                        filterOpts.push(`<option value="top:${tf}">${tf} (all)</option>`);
+                        (FEATURE_HIERARCHY[tf].subs || []).forEach(s => {
+                            filterOpts.push(`<option value="${s}">&nbsp;&nbsp;${SUB_DISPLAY[s] || s}</option>`);
+                        });
+                    });
+                    gsFeatureFilter.innerHTML = '<option value="">All Features</option>' + filterOpts.join('');
+                }
+
+                function renderFeatureTable(filter) {
+                    const rows = data.allAccounts.filter(a => (a.users || []).length > 0).map(a => {
+                        const feats = acctSubFeatures[a.name] || {};
+                        const subNames = Object.keys(feats).filter(f => feats[f] > 0);
+                        const totalEvents = Object.values(feats).reduce((s, v) => s + v, 0);
+                        return { name: a.name, sector: a.sector || '—', subs: subNames, totalEvents };
+                    }).filter(r => {
+                        if (!filter) return true;
+                        if (filter.startsWith('top:')) {
+                            const parent = filter.slice(4);
+                            return r.subs.some(s => getParentFeature(s) === parent);
+                        }
+                        return r.subs.includes(filter);
+                    }).sort((a, b) => b.totalEvents - a.totalEvents);
+
+                    document.getElementById('gs-featureTableBody').innerHTML = rows.map(r => `
+                        <tr>
+                            <td>${r.name}</td>
+                            <td style="color: var(--muted);">${r.sector}</td>
+                            <td>${featTags(r.subs)}</td>
+                            <td style="text-align: right;">${r.totalEvents.toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                renderFeatureTable('');
+                gsFeatureFilter?.addEventListener('change', () => renderFeatureTable(gsFeatureFilter.value));
+
+                // MoM Trends - create dummy data
+                const now = new Date();
+                const months = [];
+                for (let i = 5; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    months.push(d.toLocaleString('en', { month: 'short' }));
+                }
+
+                const newUsersData = [5, 8, 12, 15, 18, 22];
+                const activeUsersData = [45, 52, 61, 68, 75, 82];
+                const newAcctsData = [1, 2, 3, 2, 4, 3];
+                const activeAcctsData = [15, 17, 20, 22, 24, 26];
+
+                // New Users Line
+                const newUsersCtx = document.getElementById('gs-newUsersLine')?.getContext('2d');
+                if (newUsersCtx) {
+                    charts.newUsersLine = new Chart(newUsersCtx, {
+                        type: 'line',
+                        data: {
+                            labels: months,
+                            datasets: [{
+                                label: 'New Users',
+                                data: newUsersData,
+                                borderColor: PALETTE[0],
+                                backgroundColor: PALETTE[0] + '20',
+                                tension: 0.4,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#e2e8f0' } } },
+                            scales: {
+                                y: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
+
+                // Active Users Line
+                const activeUsersCtx = document.getElementById('gs-activeUsersLine')?.getContext('2d');
+                if (activeUsersCtx) {
+                    charts.activeUsersLine = new Chart(activeUsersCtx, {
+                        type: 'line',
+                        data: {
+                            labels: months,
+                            datasets: [{
+                                label: 'Active Users',
+                                data: activeUsersData,
+                                borderColor: PALETTE[1],
+                                backgroundColor: PALETTE[1] + '20',
+                                tension: 0.4,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#e2e8f0' } } },
+                            scales: {
+                                y: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
+
+                // New Accounts Line
+                const newAcctsCtx = document.getElementById('gs-newAccountsLine')?.getContext('2d');
+                if (newAcctsCtx) {
+                    charts.newAccountsLine = new Chart(newAcctsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: months,
+                            datasets: [{
+                                label: 'New Accounts',
+                                data: newAcctsData,
+                                backgroundColor: PALETTE[2],
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#e2e8f0' } } },
+                            scales: {
+                                y: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
+
+                // Active Accounts Line
+                const activeAcctsCtx = document.getElementById('gs-activeAccountsLine')?.getContext('2d');
+                if (activeAcctsCtx) {
+                    charts.activeAccountsLine = new Chart(activeAcctsCtx, {
+                        type: 'line',
+                        data: {
+                            labels: months,
+                            datasets: [{
+                                label: 'Active Accounts',
+                                data: activeAcctsData,
+                                borderColor: PALETTE[3],
+                                backgroundColor: PALETTE[3] + '20',
+                                tension: 0.4,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#e2e8f0' } } },
+                            scales: {
+                                y: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
+
+            }
+
+            let _rawApiData = null; // Store raw API data for filter re-renders
+
+            function applyFilters() {
+                if (!_rawApiData) return;
+                const months = getTimePeriodMonths();
+                const features = getSelectedFeatures();
+                const raw = _rawApiData._isDemo ? getDemoData() : _rawApiData;
+                const data = processData(raw, months, features);
+                renderDashboard(data);
+            }
+
+            async function loadDashboard() {
+                const overlay = document.getElementById('gs-loading-overlay');
+                const errorBanner = document.getElementById('gs-error-banner');
+                errorBanner.classList.remove('show');
+
+                try {
+                    overlay.classList.add('show');
+
+                    let data;
+                    try {
+                        const raw = await fetchData(false);
+                        _rawApiData = raw;
+                        const months = getTimePeriodMonths();
+                        const features = getSelectedFeatures();
+                        data = processData(raw, months, features);
+                        saveCache(raw.users, raw.accounts, {
+                            cached: raw.cached,
+                            fetchedAt: raw.fetchedAt,
+                            cacheAgeMin: raw.cacheAgeMin,
+                            nextRefreshMin: raw.nextRefreshMin,
+                        });
+
+                        document.getElementById('gs-cache-badge').textContent = raw.cached ? 'Cached' : 'Live';
+                        document.getElementById('gs-last-updated').textContent = new Date(raw.fetchedAt).toLocaleTimeString();
+                        document.getElementById('gs-cache-age').textContent = `${raw.cacheAgeMin}m`;
+                    } catch (err) {
+                        console.log('Fresh fetch failed, trying cache:', err.message);
+                        const cached = loadCache();
+                        if (cached) {
+                            _rawApiData = cached;
+                            const months = getTimePeriodMonths();
+                            const features = getSelectedFeatures();
+                            data = processData(cached, months, features);
+                            document.getElementById('gs-cache-badge').textContent = 'Offline Cache';
+                            document.getElementById('gs-last-updated').textContent = new Date(cached.savedAt).toLocaleTimeString();
+                            document.getElementById('gs-cache-age').textContent = 'offline';
+                        } else {
+                            // Use demo data for local preview when API is unavailable
+                            const demoRaw = getDemoData();
+                            _rawApiData = demoRaw;
+                            const months = getTimePeriodMonths();
+                            const features = getSelectedFeatures();
+                            data = processData(demoRaw, months, features);
+                            document.getElementById('gs-cache-badge').textContent = 'Demo Data';
+                            document.getElementById('gs-last-updated').textContent = 'N/A';
+                            document.getElementById('gs-cache-age').textContent = 'demo';
+                        }
+                    }
+
+                    renderDashboard(data);
+                } catch (err) {
+                    errorBanner.textContent = `Error: ${err.message}`;
+                    errorBanner.classList.add('show');
+                } finally {
+                    overlay.classList.remove('show');
+                }
+            }
+
+            function init() {
+                document.getElementById('gs-refresh-btn').addEventListener('click', () => loadDashboard());
+                document.getElementById('gs-force-refresh-btn').addEventListener('click', async () => {
+                    const overlay = document.getElementById('gs-loading-overlay');
+                    overlay.classList.add('show');
+                    try {
+                        const raw = await fetchData(true);
+                        _rawApiData = raw;
+                        const months = getTimePeriodMonths();
+                        const features = getSelectedFeatures();
+                        const data = processData(raw, months, features);
+                        saveCache(raw.users, raw.accounts, {
+                            cached: raw.cached,
+                            fetchedAt: raw.fetchedAt,
+                            cacheAgeMin: raw.cacheAgeMin,
+                            nextRefreshMin: raw.nextRefreshMin,
+                        });
+                        document.getElementById('gs-cache-badge').textContent = 'Live';
+                        renderDashboard(data);
+                    } finally {
+                        overlay.classList.remove('show');
+                    }
+                });
+
+                // Time period filter
+                document.getElementById('gs-timePeriodFilter').addEventListener('change', applyFilters);
+
+                // Feature multiselect dropdown toggle
+                const multiBtn = document.getElementById('gs-featureMultiBtn');
+                const multiDrop = document.getElementById('gs-featureMultiDropdown');
+                multiBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    multiDrop.classList.toggle('open');
+                });
+                document.addEventListener('click', () => multiDrop.classList.remove('open'));
+                multiDrop.addEventListener('click', (e) => e.stopPropagation());
+
+                // Feature checkbox changes
+                multiDrop.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        const selected = getSelectedFeatures();
+                        multiBtn.textContent = selected.length === CORE_FEATURES.length ? 'All Features' : selected.join(', ') || 'None';
+                        applyFilters();
+                    });
+                });
+
+                // Load HubSpot exclusions then dashboard
+                loadExclusions().then(() => loadDashboard());
+            }
+
+            return { init };
+        })();
+
+        /* ============= FAQ (HELP-FAQ) ============= */
+        window.FAQ = (() => {
+            const ISSUES = [
+  { id: 1, date: "2026-03-17", title: "PDF Viewer not working in Microsoft Edge", description: "FINMA prospect unable to view PDFs when clicking links in the platform using Microsoft Edge browser.", feature: "PDF Viewer", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Adobe Embed API blocked by company security settings. Workaround provided; alternative PDF method planned for future release.", client: "FINMA", threadTs: "1773759688.347879" },
+  { id: 2, date: "2026-03-17", title: "Comparison View not showing selected companies", description: "Selecting multiple companies in dropdown but platform does not show the selected companies. Recurring issue reported multiple times.", feature: "Comparison View", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Intermittent bug reproduced and patched into production on Mar 18, 2026.", client: "FINMA", threadTs: "1773759688.347879" },
+  { id: 3, date: "2026-03-17", title: "Scope 3 emissions showing 'not found' despite data existing", description: "PostFinance run: AI stating gross Scope 3 emission value as 'not found' when figures exist on page 67 of sustainability report.", feature: "AI/Methodology", reporter: "Jeff Horlor", priority: "Medium", status: "Open", resolution: "Under discussion — prompt change considered but model is assessing something specific.", client: "FINMA", threadTs: "1773759688.347879" },
+  { id: 4, date: "2026-03-17", title: "Page numbers not matching actual PDF pages", description: "Page tagging bug where page numbers in results don't match the actual pages in documents.", feature: "Compliance UI", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Page index +1 bug fixed and deployed to production on Mar 23, 2026.", client: "FINMA", threadTs: "1773759688.347879" },
+  { id: 5, date: "2026-03-17", title: "Assessments not completing full 77 datapoints", description: "Graubündner Kantonalbank TCFD v2 and v3 assessments keep running into issues and not completing.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Fixed after investigation by engineering team. Duplicate assessment also resolved.", client: "FINMA", threadTs: "1773759688.347879" },
+  { id: 6, date: "2026-03-12", title: "Assessment stuck after failing to assess some requirements", description: "Assessment kicked off for FINMA prospect seems stuck after failing to assess some requirements.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Fixed — both original and duplicate assessments completed successfully.", client: "FINMA", threadTs: "1773336761.830639" },
+  { id: 7, date: "2026-02-26", title: "Assessment stuck in 'Processing Documents' for 20+ hours", description: "Assessment on one document stuck showing 'Processing Documents' since previous day. Also happening in another trial account.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Open", resolution: "Engineering stopped duplicate runs and is debugging. Monitoring improvements requested.", client: "Prospect trial", threadTs: "1772114866.303929" },
+  { id: 8, date: "2026-02-13", title: "How to set up login for Agent POC", description: "Question about whether users can self-register for Agent POC or need to be set up in Union first.", feature: "Login/Auth", reporter: "Jeff Horlor", priority: "Low", status: "Closed", resolution: "Answered in thread — clarification provided on login setup process.", client: "Internal", threadTs: "1771015065.324049" },
+  { id: 9, date: "2026-02-09", title: "Blocked from logging into the product", description: "Error code preventing login to the product.", feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "Medium", status: "Closed", resolution: "Resolved within 1.5 hours.", client: "Internal", threadTs: "1770657137.166639" },
+  { id: 10, date: "2026-02-04", title: "Agent backend down — cannot log in", description: "Agent not accessible, backend server down due to AWS resource exhaustion on undersized t3.micro instance.", feature: "Agent", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Machine spec upgraded from t3.micro POC to production-grade instance. Service restored.", client: "Multiple users", threadTs: "1770229656.766969" },
+  { id: 11, date: "2026-02-03", title: "Assessments sitting in queue for hours", description: "Two assessments in queue for several hours, significantly longer than normal. Prospect demo urgency.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Assessments completed. 77 datapoints confirmed saved to DB.", client: "Prospect demo", threadTs: "1770154551.147539" },
+  { id: 12, date: "2026-01-30", title: "Assessments queued mid-day still not finalized by evening", description: "Assessments with ~77 datapoints each queued mid-day not completing in expected timeframe.", feature: "Assessment Processing", reporter: "Alex Konson", priority: "Medium", status: "Closed", resolution: "Completed by next business day. Non-urgent FYI.", client: "Internal", threadTs: "1769816855.621179" },
+  { id: 13, date: "2026-01-29", title: "TCFD documents showing as 'CSDS' in platform", description: "Incorrect naming — TCFD document links displaying as 'CSDS' instead of correct standard name.", feature: "Compliance UI", reporter: "Jeff Horlor", priority: "Medium", status: "Closed", resolution: "Hard-coded names updated in production on Jan 30. Correct naming confirmed: TCFD, IFRS S2, ESRS.", client: "All users", threadTs: "1769736836.237369" },
+  { id: 14, date: "2026-01-16", title: "Demo assessment stuck on 'Processing Documents' for 1+ hour", description: "Fidelity demo assessment stuck on Processing Documents step with upcoming 10am demo.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Resolved before demo time.", client: "Fidelity (demo)", threadTs: "1768572631.048159" },
+  { id: 15, date: "2025-12-11", title: "CSRD datapoints stuck in queue — payload too big for Databricks", description: "Client assessment partially ran but CSRD datapoints stuck for a day. Payload exceeds Databricks character limit.", feature: "Assessment Processing", reporter: "Adam Rochwerg", priority: "High", status: "Closed", resolution: "Bug identified (Databricks payload size limit). Manually run for client. Fix discussed with engineering.", client: "Mantle Climate", threadTs: "1765483213.957329" },
+  { id: 16, date: "2025-12-08", title: "CSRD section labels changed from 'E1 - Climate Change' to just 'E1'", description: "Labels in platform lost descriptive names, making navigation harder for users unfamiliar with regulation codes.", feature: "Compliance UI", reporter: "Adam Rochwerg", priority: "Medium", status: "Open", resolution: "Deferred to pre-irtable migration. Labels reflect methodology sheet directly.", client: "All users", threadTs: "1765222518.514899" },
+  { id: 17, date: "2025-11-05", title: "Agent keeps disconnecting during output generation", description: "Agent disconnects periodically when generating outputs, even for simple questions.", feature: "Agent", reporter: "Jeff Horlor", priority: "Medium", status: "Open", resolution: "Acknowledged as Beta limitation.", client: "Internal", threadTs: "1762359808.120559" },
+  { id: 18, date: "2025-11-04", title: "Website, agent, and email all down", description: "GoDaddy hosting problem causing website, agent, and email services to all go down simultaneously.", feature: "Infrastructure", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "GoDaddy hosting issue fixed by Muchen. Services restored.", client: "Company-wide", threadTs: "1762265148.057689" },
+  { id: 19, date: "2025-10-23", title: "Client not receiving verification code for login", description: "ReTech (Oaktree) user unable to receive verification code during registration, preventing platform access.", feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "High", status: "Closed", resolution: "User eventually got in after multiple attempts and support intervention.", client: "ReTech (Oaktree)", threadTs: "1761225227.849689" },
+  { id: 20, date: "2025-09-24", title: "Error running assessment on group of disclosures (IFRS S2)", description: "Error when running IFRS S2 assessment on multiple documents. Possibly due to 12.9MB ESG report size.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "Medium", status: "Closed", resolution: "Resolved in thread — file size issue addressed.", client: "Prospect (Liontown)", threadTs: "1758739552.554659" },
+  { id: 21, date: "2025-09-12", title: "Workspace vs Tracker showing different action item totals", description: "Client confused — Workspace shows 41 action items while Tracker shows correct per-standard totals (39, 39, 33).", feature: "Tracker/Workspace", reporter: "Fatou Dieng", priority: "Medium", status: "Closed", resolution: "Explained: 41 represents deduplicated total across all three standards. Not a bug — UX clarification needed.", client: "Popular Bank", threadTs: "1757708746.673539" },
+  { id: 22, date: "2025-09-11", title: "Client unable to log in — registration errors", description: "Portage Mutual client seeing errors during registration, unable to complete login even after re-invitation.", feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "High", status: "Closed", resolution: "User removed and re-registered. Password reset sent successfully.", client: "Portage Mutual", threadTs: "1757616991.440989" },
+  { id: 23, date: "2025-07-17", title: "AI showing 'Likely Met' with no supporting quotes", description: "Assessment result showing 'Likely Met' status but no quotes pulled to support the determination.", feature: "AI/Methodology", reporter: "Jeff Horlor", priority: "Medium", status: "Closed", resolution: "Known issue with old engine. New AI engine deployed in August with improvements.", client: "Internal/demos", threadTs: "1752782716.123789" },
+  { id: 24, date: "2025-07-16", title: "Assessment datapoints failing to run (TCFD)", description: "Some datapoints in TCFD assessment completely failing to run, not even executing.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "Medium", status: "Closed", resolution: "Re-run resolved the issue. Team advised to tag Ina/Phillip if persistent.", client: "Demo - UBS Group", threadTs: "1752677550.181649" },
+  { id: 25, date: "2025-07-15", title: "Delete Assessment View function broken", description: "Cannot delete assessment views due to recent security upgrade breaking the functionality.", feature: "Compliance UI", reporter: "Ina Li", priority: "Medium", status: "Closed", resolution: "Fix deployed with July 25 release. Manual deletions handled in the interim.", client: "All users", threadTs: "1752595428.595679" },
+  { id: 26, date: "2025-07-14", title: "Cannot delete test assessment from client org", description: "Assessment 'h' cannot be deleted from Interface client organization despite multiple attempts.", feature: "Compliance UI", reporter: "Fatou Dieng", priority: "Low", status: "Closed", resolution: "Manually removed by Ina.", client: "Interface", threadTs: "1752507041.410299" },
+  { id: 27, date: "2025-07-10", title: "IFRS S2 datapoint count changed without notification", description: "IFRS went from 147 to 112 datapoints, CSRD also changed. No notification to clients or internal teams.", feature: "Data/Datapoints", reporter: "Fatou Dieng", priority: "Medium", status: "Closed", resolution: "Explained as methodology improvement. Team agreed to batch future updates with Gainsight notifications.", client: "Interface", threadTs: "1752160488.263729" },
+  { id: 28, date: "2025-07-03", title: "Compliance results page missing dropdowns for Governance and RM", description: "Only Strategy and M&T pillars have dropdown navigation. Governance and RM lack themed groupings.", feature: "Compliance UI", reporter: "Adam Rochwerg", priority: "Low", status: "Open", resolution: "Feature request discussed. No timeline set.", client: "All users", threadTs: "1751571190.840509" },
+  { id: 29, date: "2025-06-24", title: "Best practices in Tracker outdated (2021-2022)", description: "Clients asking for best practice examples but content is from 2021/2022 and not being updated.", feature: "Tracker/Workspace", reporter: "Adam Rochwerg", priority: "Low", status: "Open", resolution: "Discussion about turning off functionality. No resolution yet.", client: "Multiple clients", threadTs: "1750775379.094169" },
+  { id: 30, date: "2025-06-23", title: "SSO login issues for Meta users", description: "Meta team experiencing SSO login problems.", feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "Medium", status: "Closed", resolution: "Determined to be Meta's internal IT issue, not Manifest Climate product.", client: "Meta", threadTs: "1750691413.447939" },
+  { id: 31, date: "2025-06-18", title: "Capital One team unable to log in", description: "Entire Capital One team experiencing login issues. Union looks OK but users can't access platform.", feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "High", status: "Closed", resolution: "Investigated by Alan. Issue resolved.", client: "Capital One", threadTs: "1750276266.205009" },
+  { id: 32, date: "2025-06-18", title: "Tracker Insights not showing full database", description: "In Tracker Insights, client cannot see entire database — only peer data showing.", feature: "Tracker/Workspace", reporter: "Fatou Dieng", priority: "Medium", status: "Closed", resolution: "Caused by no Additional Sectors selected in Union. Config updated and working.", client: "Tishman Speyer", threadTs: "1750257875.724179" },
+  { id: 33, date: "2025-06-03", title: "IFRS S2 assessment output questioned — SASB guidance", description: "Question about whether IFRS S2 industry-specific guidance (SASB) result is accurate.", feature: "AI/Methodology", reporter: "Jeff Horlor", priority: "Low", status: "Closed", resolution: "Answered in thread — methodology clarification provided.", client: "CAPREIT", threadTs: "1748975396.381189" },
+  { id: 34, date: "2025-05-21", title: "Document viewer showing error when clicking hyperlinked pages", description: "During Tracker demo, clicking hyperlinked page numbers to access reports shows an error.", feature: "PDF Viewer", reporter: "Fatou Dieng", priority: "Medium", status: "Closed", resolution: "Investigated by Ina. Issue addressed.", client: "PwC", threadTs: "1747856342.504779" },
+  { id: 35, date: "2025-05-14", title: "Excel export uses different terminology than in-product", description: "Export shows 'Compliance Status' vs 'Disclosure Status' and 'Fully Met' vs 'Likely Met'.", feature: "Compliance UI", reporter: "Jeff Horlor", priority: "Medium", status: "Open", resolution: "Bug reported. No fix timeline confirmed.", client: "All users", threadTs: "1747257857.557939" },
+  { id: 36, date: "2025-05-06", title: "Comparison View intermittently not showing selected assessments", description: "Selecting 3 assessments but only 2 show up initially. Need to reselect multiple times.", feature: "Comparison View", reporter: "Jeff Horlor", priority: "Medium", status: "Closed", resolution: "Could not reproduce initially. Later fixed as part of Mar 2026 Comparison View patch.", client: "Internal/demos", threadTs: "1746562403.584409" }
+];
+
+            const FAQ_FEAT_CLASS = {
+                'Assessment Processing': 'faq-feat-assessment',
+                'Login/Auth': 'faq-feat-login',
+                'Compliance UI': 'faq-feat-compliance',
+                'Comparison View': 'faq-feat-comparison',
+                'PDF Viewer': 'faq-feat-pdf',
+                'AI/Methodology': 'faq-feat-ai',
+                'Agent': 'faq-feat-agent',
+                'Tracker': 'faq-feat-tracker',
+                'Disclosure Library': 'faq-feat-disclosure',
+                'Workspace': 'faq-feat-workspace',
+            };
+
+            function faqFeatureClass(feature) {
+                return FAQ_FEAT_CLASS[feature] || 'faq-badge-feature';
+            }
+
+            let currentSort = 'date';
+            let tableStatusFilter = '';
+            let chartInstances = {};
+
+            function getFiltered() {
+                const months = parseInt(document.getElementById('faq-filterTimeRange')?.value || '6');
+                const feature = document.getElementById('faq-filterFeature')?.value || '';
+                const status = document.getElementById('faq-filterStatus')?.value || '';
+                const priority = document.getElementById('faq-filterPriority')?.value || '';
+                const search = document.getElementById('faq-searchInput')?.value.toLowerCase() || '';
+
+                const cutoff = new Date();
+                cutoff.setMonth(cutoff.getMonth() - months);
+                const cutoffStr = cutoff.toISOString().split('T')[0];
+
+                return ISSUES.filter(issue => {
+                    if (issue.date < cutoffStr) return false;
+                    if (feature && issue.feature !== feature) return false;
+                    if (status && issue.status !== status) return false;
+                    if (priority && issue.priority !== priority) return false;
+                    if (search && !issue.title.toLowerCase().includes(search) && !issue.description.toLowerCase().includes(search)) return false;
+                    return true;
+                });
+            }
+
+            function getFeatures() {
+                return [...new Set(ISSUES.map(i => i.feature))].sort();
+            }
+
+            function renderKPIs() {
+                const filtered = getFiltered();
+                const total = filtered.length;
+                const open = filtered.filter(i => i.status === 'Open').length;
+                const closed = filtered.filter(i => i.status === 'Closed').length;
+                const highOpen = filtered.filter(i => i.status === 'Open' && i.priority === 'High').length;
+                const rate = total > 0 ? Math.round((closed / total) * 100) : 0;
+
+                const mostActive = getMostActiveFeature(filtered);
+                const timeLabel = { '1': 'Last month', '3': 'Last 3 months', '6': 'Last 6 months', '12': 'Last 12 months' }[document.getElementById('faq-filterTimeRange')?.value || '6'] || 'Selected period';
+                const html = `
+                    <div class="faq-kpi">
+                        <div class="faq-kpi-value" style="color: var(--accent);">${total}</div>
+                        <div class="faq-kpi-label">Total Issues</div>
+                        <div class="faq-kpi-sub">${timeLabel}</div>
+                    </div>
+                    <div class="faq-kpi">
+                        <div class="faq-kpi-value" style="color: var(--red);">${open}</div>
+                        <div class="faq-kpi-label">Open Issues</div>
+                        <div class="faq-kpi-sub">${highOpen} high priority</div>
+                    </div>
+                    <div class="faq-kpi">
+                        <div class="faq-kpi-value" style="color: var(--green);">${closed}</div>
+                        <div class="faq-kpi-label">Resolved Issues</div>
+                        <div class="faq-kpi-sub">${rate}% resolution rate</div>
+                    </div>
+                    <div class="faq-kpi">
+                        <div class="faq-kpi-value" style="color: var(--amber); font-size: 20px;">${mostActive.name}</div>
+                        <div class="faq-kpi-label">Most Active Feature</div>
+                        <div class="faq-kpi-sub">${mostActive.count} issues</div>
+                    </div>
+                `;
+                document.getElementById('faq-kpiRow').innerHTML = html;
+            }
+
+            function getMostActiveFeature(data) {
+                const counts = {};
+                data.forEach(i => counts[i.feature] = (counts[i.feature] || 0) + 1);
+                const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                return sorted.length ? { name: sorted[0][0], count: sorted[0][1] } : { name: 'N/A', count: 0 };
+            }
+
+            function getTopReporters(data) {
+                const source = data || ISSUES;
+                const counts = {};
+                source.forEach(i => {
+                    counts[i.reporter] = (counts[i.reporter] || 0) + 1;
+                });
+                return Object.entries(counts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 6)
+                    .map(([name, count]) => ({ name, count }));
+            }
+
+            function renderCharts() {
+                Object.values(chartInstances).forEach(c => c && c.destroy());
+                chartInstances = {};
+
+                const filtered = getFiltered();
+
+                // By Feature
+                const byFeature = {};
+                filtered.forEach(i => {
+                    byFeature[i.feature] = (byFeature[i.feature] || 0) + 1;
+                });
+
+                const featCtx = document.getElementById('faq-chartByFeature')?.getContext('2d');
+                if (featCtx) {
+                    // Sort features high to low
+                    const faqFeatEntries = Object.entries(byFeature).sort((a, b) => b[1] - a[1]);
+                    const faqFeatLabels = faqFeatEntries.map(e => e[0]);
+                    const faqFeatValues = faqFeatEntries.map(e => e[1]);
+                    const FAQ_PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
+                    chartInstances.byFeature = new Chart(featCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: faqFeatLabels,
+                            datasets: [{
+                                label: 'Issues',
+                                data: faqFeatValues,
+                                backgroundColor: faqFeatLabels.map((_, i) => FAQ_PALETTE[i % FAQ_PALETTE.length]),
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
+
+                // Resolution Rate
+                const total = filtered.length;
+                const resolved = filtered.filter(i => i.status === 'Closed').length;
+                const unresolved = total - resolved;
+
+                const resCtx = document.getElementById('faq-chartResolution')?.getContext('2d');
+                if (resCtx) {
+                    chartInstances.resolution = new Chart(resCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Resolved', 'Unresolved'],
+                            datasets: [{
+                                data: [resolved, unresolved],
+                                backgroundColor: ['#10b981', '#f43f5e'],
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { color: '#e2e8f0' } }
+                            }
+                        }
+                    });
+                }
+
+                // Timeline (issues by date)
+                const byDate = {};
+                filtered.forEach(i => {
+                    const d = i.date.substring(0, 7);
+                    byDate[d] = (byDate[d] || 0) + 1;
+                });
+                const dates = Object.keys(byDate).sort();
+
+                const timelineCtx = document.getElementById('faq-chartTimeline')?.getContext('2d');
+                if (timelineCtx) {
+                    chartInstances.timeline = new Chart(timelineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: dates,
+                            datasets: [{
+                                label: 'Issues Created',
+                                data: dates.map(d => byDate[d]),
+                                borderColor: '#22d3ee',
+                                backgroundColor: '#22d3ee20',
+                                tension: 0.4,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#e2e8f0' } } },
+                            scales: {
+                                y: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
+
+                // Top Reporters (based on filtered data)
+                const reporters = getTopReporters(filtered);
+
+                const reportersCtx = document.getElementById('faq-chartReporters')?.getContext('2d');
+                if (reportersCtx) {
+                    const RPT_PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
+                    chartInstances.reporters = new Chart(reportersCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: reporters.map(r => r.name),
+                            datasets: [{
+                                label: 'Reports',
+                                data: reporters.map(r => r.count),
+                                backgroundColor: reporters.map((_, i) => RPT_PALETTE[i % RPT_PALETTE.length]),
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: {
+                                    grid: { color: '#6b6f8a' },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                                y: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' },
+                                },
+                            }
+                        }
+                    });
+                }
+            }
+
+            function renderTable() {
+                let toShow = tableStatusFilter ? getFiltered().filter(i => i.status === tableStatusFilter) : getFiltered();
+
+                toShow.sort((a, b) => {
+                    if (currentSort === 'date') return new Date(b.date) - new Date(a.date);
+                    if (currentSort === 'title') return a.title.localeCompare(b.title);
+                    if (currentSort === 'feature') return a.feature.localeCompare(b.feature);
+                    if (currentSort === 'reporter') return a.reporter.localeCompare(b.reporter);
+                    if (currentSort === 'priority') {
+                        const prio = { High: 0, Medium: 1, Low: 2 };
+                        return (prio[a.priority] ?? 3) - (prio[b.priority] ?? 3);
+                    }
+                    if (currentSort === 'status') return a.status.localeCompare(b.status);
+                    return 0;
+                });
+
+                const html = toShow.map(i => {
+                    const dateStr = new Date(i.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+                    const priClass = i.priority === 'High' ? 'priority-high' : i.priority === 'Medium' ? 'priority-medium' : 'priority-low';
+                    return `
+                    <tr>
+                        <td style="white-space:nowrap;">${dateStr}</td>
+                        <td><strong>${i.title}</strong><br><span style="color:var(--muted);font-size:12px;">${i.description.substring(0,100)}${i.description.length > 100 ? '...' : ''}</span></td>
+                        <td><span class="faq-badge ${faqFeatureClass(i.feature)}">${i.feature}</span></td>
+                        <td>${i.reporter}</td>
+                        <td><span class="faq-priority-dot ${priClass}"></span>${i.priority}</td>
+                        <td><span class="faq-badge ${i.status === 'Open' ? 'faq-badge-open' : 'faq-badge-closed'}">${i.status}</span></td>
+                        <td style="font-size:12px;color:var(--muted);max-width:250px;">${i.resolution}</td>
+                    </tr>`;
+                }).join('');
+
+                document.getElementById('faq-issueTableBody').innerHTML = html;
+            }
+
+            function sortTable(col) {
+                currentSort = col;
+                renderTable();
+            }
+
+            function setTableTab(status) {
+                tableStatusFilter = status;
+                document.querySelectorAll('.faq-tab').forEach(t => t.classList.remove('active'));
+                event.target.classList.add('active');
+                renderTable();
+            }
+
+            function populateFilters() {
+                const features = getFeatures();
+                const select = document.getElementById('faq-filterFeature');
+                if (select) {
+                    select.innerHTML = '<option value="">All Features</option>' + features.map(f => `<option value="${f}">${f}</option>`).join('');
+                    select.addEventListener('change', () => {
+                        renderKPIs();
+                        renderCharts();
+                        renderTable();
+                    });
+                }
+
+                document.getElementById('faq-filterTimeRange')?.addEventListener('change', () => {
+                    renderKPIs();
+                    renderCharts();
+                    renderTable();
+                });
+
+                document.getElementById('faq-filterStatus')?.addEventListener('change', () => {
+                    renderKPIs();
+                    renderCharts();
+                    renderTable();
+                });
+
+                document.getElementById('faq-filterPriority')?.addEventListener('change', () => {
+                    renderKPIs();
+                    renderCharts();
+                    renderTable();
+                });
+
+                document.getElementById('faq-searchInput')?.addEventListener('input', () => {
+                    renderKPIs();
+                    renderCharts();
+                    renderTable();
+                });
+
+                document.querySelectorAll('.faq-tab').forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        setTableTab(this.getAttribute('data-status'));
+                    });
+                });
+            }
+
+            function refresh() {
+                renderKPIs();
+                renderCharts();
+                renderTable();
+            }
+
+            function init() {
+                populateFilters();
+                refresh();
+            }
+
+            return { init, sortTable };
+        })();
+
+        /* ============= DATAPOINTS (DP) ============= */
+        window.DP = (() => {
+            let _rawRows = [];
+            let _processed = null;
+            let _charts = {};
+            let _sortState = { column: 'org', direction: 'asc' };
+            let _paidState = {};
+
+            function parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') {
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current.trim());
+                return result;
+            }
+
+            function parseCSV(text) {
+                const lines = text.trim().split('\n');
+                const header = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+                const rows = [];
+
+                // Map known column names to internal keys
+                const colMap = {};
+                header.forEach((h, idx) => {
+                    if (h === 'transactiondate' || h === 'date') colMap.date = idx;
+                    else if (h === 'organization' || h === 'org') colMap.org = idx;
+                    else if (h === 'orgtype' || h === 'type') colMap.orgtype = idx;
+                    else if (h === 'firstname') colMap.firstname = idx;
+                    else if (h === 'lastname') colMap.lastname = idx;
+                    else if (h === 'email') colMap.email = idx;
+                    else if (h === 'source') colMap.source = idx;
+                    else if (h === 'reason') colMap.reason = idx;
+                    else if (h === 'datapointschange' || h === 'change' || h === 'used') colMap.change = idx;
+                    else if (h === 'datapointsbalance' || h === 'balance') colMap.balance = idx;
+                    else if (h === 'external') colMap.external = idx;
+                    else if (h === 'paid') colMap.paid = idx;
+                    else if (h === 'added') colMap.added = idx;
+                });
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = parseCSVLine(lines[i]);
+                    if (values.length < 2) continue;
+
+                    const org = colMap.org !== undefined ? (values[colMap.org] || '').trim() : '';
+                    if (!org) continue;
+
+                    const dateRaw = colMap.date !== undefined ? (values[colMap.date] || '').trim() : '';
+                    const dateStr = dateRaw.includes('T') ? dateRaw.split('T')[0] : dateRaw;
+
+                    const changeVal = colMap.change !== undefined ? parseInt(values[colMap.change]) || 0 : 0;
+                    const balanceVal = colMap.balance !== undefined ? parseInt(values[colMap.balance]) || 0 : 0;
+                    const orgType = colMap.orgtype !== undefined ? (values[colMap.orgtype] || '').trim() : '';
+                    const source = colMap.source !== undefined ? (values[colMap.source] || '').trim() : '';
+                    const user = [
+                        colMap.firstname !== undefined ? values[colMap.firstname] : '',
+                        colMap.lastname !== undefined ? values[colMap.lastname] : ''
+                    ].filter(Boolean).join(' ').trim();
+
+                    // Determine if this is consumption (negative change) or addition (positive change)
+                    const used = changeVal < 0 ? Math.abs(changeVal) : 0;
+                    const added = changeVal > 0 ? changeVal : 0;
+                    const isExternal = orgType.toLowerCase() !== 'internal';
+
+                    const reason = colMap.reason !== undefined ? (values[colMap.reason] || '').trim() : '';
+
+                    rows.push({
+                        date: dateStr,
+                        org: org,
+                        orgtype: orgType,
+                        external: isExternal,
+                        used: used,
+                        added: added,
+                        balance: balanceVal,
+                        source: source,
+                        reason: reason,
+                        user: user,
+                        paid: false
+                    });
+                }
+                return rows;
+            }
+
+            function getMondayKey(dateStr) {
+                const d = new Date(dateStr);
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                const mon = new Date(d.setDate(diff));
+                return mon.toISOString().split('T')[0];
+            }
+
+            function getMonthKey(dateStr) {
+                return dateStr.substring(0, 7);
+            }
+
+            function fmtWeekLabel(mondayStr) {
+                const d = new Date(mondayStr);
+                const sun = new Date(d);
+                sun.setDate(d.getDate() + 6);
+                return `${d.getDate()}/${d.getMonth() + 1} - ${sun.getDate()}/${sun.getMonth() + 1}`;
+            }
+
+            function fmtMonthLabel(monthStr) {
+                const [y, m] = monthStr.split('-');
+                return new Date(y, m - 1).toLocaleString('en', { month: 'short', year: 'numeric' });
+            }
+
+            function processData() {
+                const weekly = {};
+                const monthly = {};
+                const byOrg = {};
+
+                _rawRows.forEach(row => {
+                    const date = row.date;
+                    const org = row.org;
+                    const ext = row.external ? 1 : 0;
+                    const used = row.used || 0;
+                    const added = row.added || 0;
+
+                    const weekKey = getMondayKey(date);
+                    const monthKey = getMonthKey(date);
+
+                    weekly[weekKey] = (weekly[weekKey] || 0) + used;
+                    monthly[monthKey] = (monthly[monthKey] || 0) + used;
+
+                    if (!byOrg[org]) byOrg[org] = { used: 0, added: 0, type: ext ? 'external' : 'internal', weeks: {}, months: {}, reason: '', reasonDate: '' };
+                    byOrg[org].used += used;
+                    byOrg[org].added += added;
+                    byOrg[org].weeks[weekKey] = (byOrg[org].weeks[weekKey] || 0) + used;
+                    byOrg[org].months[monthKey] = (byOrg[org].months[monthKey] || 0) + used;
+                    // Track the most recent reason (only from CSV reason column)
+                    const reason = row.reason || '';
+                    if (reason && date >= byOrg[org].reasonDate) {
+                        byOrg[org].reason = reason;
+                        byOrg[org].reasonDate = date;
+                    }
+                });
+
+                _processed = {
+                    weekly: Object.entries(weekly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtWeekLabel(key), value: val })),
+                    monthly: Object.entries(monthly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtMonthLabel(key), value: val })),
+                    byOrg: Object.entries(byOrg).map(([name, data]) => ({ name, ...data })),
+                };
+            }
+
+            function n(num) {
+                return (num || 0).toLocaleString();
+            }
+
+            function pct(num) {
+                return Math.round(num * 100) + '%';
+            }
+
+            function changeCell(curr, prev) {
+                const diff = curr - prev;
+                const ratio = prev > 0 ? diff / prev : 0;
+                const cls = diff > 0 ? 'dp-change-positive' : diff < 0 ? 'dp-change-negative' : 'dp-change-neutral';
+                const sign = diff > 0 ? '+' : '';
+                return `<span class="${cls}">${sign}${n(diff)} (${pct(ratio)})</span>`;
+            }
+
+            function initPaidState() {
+                _paidState = {};
+                _processed.byOrg.forEach(org => {
+                    // Auto-check paid if the most recent reason contains "(Paid)" or "Paid"
+                    const reason = (org.reason || '').toLowerCase();
+                    _paidState[org.name] = reason.includes('(paid)') || reason.includes('paid');
+                });
+            }
+
+            function computePaidBreakdown(period) {
+                const periods = period === 'weekly' ? _processed.weekly : _processed.monthly;
+                if (periods.length === 0) return { paid: 0, unpaid: 0 };
+
+                const lastPeriod = periods[periods.length - 1];
+                const total = lastPeriod.value;
+                const paid = total;
+                return { paid, unpaid: total - paid };
+            }
+
+            function breakdownHTML(breakdown) {
+                return `
+                    <span class="dp-break-item">
+                        <span class="dp-break-badge dp-break-paid">Paid: ${n(breakdown.paid)}</span>
+                    </span>
+                    <span class="dp-break-item">
+                        <span class="dp-break-badge dp-break-unpaid">Unpaid: ${n(breakdown.unpaid)}</span>
+                    </span>
+                `;
+            }
+
+            function renderKPIs(period) {
+                const periods = period === 'weekly' ? _processed.weekly : _processed.monthly;
+                if (periods.length < 2) {
+                    ['dp-kpi-used-week', 'dp-kpi-used-month', 'dp-kpi-added-week', 'dp-kpi-added-month'].forEach(id => {
+                        document.getElementById(id).textContent = '—';
+                        document.getElementById(id.replace('kpi', 'breakdown')).innerHTML = '';
+                    });
+                    return;
+                }
+
+                const curr = periods[periods.length - 1].value;
+                const prev = periods[periods.length - 2].value;
+
+                const used = n(curr);
+                const breakdown = computePaidBreakdown(period);
+
+                if (period === 'weekly') {
+                    document.getElementById('dp-kpi-used-week').textContent = used;
+                    document.getElementById('dp-breakdown-used-week').innerHTML = breakdownHTML(breakdown);
+                } else {
+                    document.getElementById('dp-kpi-used-month').textContent = used;
+                    document.getElementById('dp-breakdown-used-month').innerHTML = breakdownHTML(breakdown);
+                }
+            }
+
+            function makeLineChart(canvasId, data, label, color) {
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                if (!ctx) return;
+
+                if (_charts[canvasId]) _charts[canvasId].destroy();
+
+                _charts[canvasId] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => d.label),
+                        datasets: [{
+                            label: label,
+                            data: data.map(d => d.value),
+                            borderColor: color,
+                            backgroundColor: color + '20',
+                            tension: 0.4,
+                            fill: true,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#e2e8f0' } } },
+                        scales: {
+                            y: {
+                                grid: { color: '#6b6f8a' },
+                                ticks: { color: '#94a3b8' },
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#94a3b8' },
+                            },
+                        }
+                    }
+                });
+            }
+
+            function setChartPeriod(period) {
+                document.querySelectorAll('.dp-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`.dp-toggle-btn[data-period="${period}"]`)?.classList.add('active');
+                redrawCharts(period);
+            }
+
+            function redrawCharts(period) {
+                const data = period === 'weekly' ? _processed.weekly : _processed.monthly;
+                makeLineChart('dp-chartUsage', data, 'Datapoints Used', '#6366f1');
+                makeLineChart('dp-chartAdditions', data, 'Datapoints Added', '#10b981');
+            }
+
+            function sortOrgTable(col) {
+                if (_sortState.column === col) {
+                    _sortState.direction = _sortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    _sortState.column = col;
+                    _sortState.direction = 'asc';
+                }
+                renderOrgTable();
+            }
+
+            function renderOrgTable() {
+                let orgs = [..._processed.byOrg];
+
+                orgs.sort((a, b) => {
+                    let aVal, bVal;
+                    if (_sortState.column === 'org') {
+                        aVal = a.name;
+                        bVal = b.name;
+                    } else if (_sortState.column === 'type') {
+                        aVal = a.type;
+                        bVal = b.type;
+                    } else if (_sortState.column === 'used') {
+                        aVal = a.used;
+                        bVal = b.used;
+                    } else {
+                        return 0;
+                    }
+
+                    const cmp = typeof aVal === 'string' ? aVal.localeCompare(bVal) : aVal - bVal;
+                    return _sortState.direction === 'asc' ? cmp : -cmp;
+                });
+
+                const html = orgs.map(org => {
+                    const type = org.type === 'external'
+                        ? '<span class="dp-badge dp-badge-external">EXTERNAL</span>'
+                        : '<span class="dp-badge dp-badge-internal">INTERNAL</span>';
+                    const paidChecked = _paidState[org.name] ? 'checked' : '';
+
+                    const reasonText = org.reason || '—';
+
+                    return `
+                        <tr>
+                            <td>${org.name}</td>
+                            <td>${type}</td>
+                            <td style="text-align: right;">${n(org.used)}</td>
+                            <td style="text-align: right;">${n(org.added)}</td>
+                            <td style="font-size: 12px; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${reasonText}">${reasonText}</td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="dp-paid-checkbox" data-org="${org.name}" ${paidChecked} onchange="window.DP.onPaidToggle(this)">
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                document.getElementById('dp-tblOrg').innerHTML = html;
+            }
+
+            function onPaidToggle(checkbox) {
+                const org = checkbox.getAttribute('data-org');
+                _paidState[org] = checkbox.checked;
+            }
+
+            function applyFilters() {
+                renderOrgTable();
+            }
+
+            function renderDashboard() {
+                if (!_processed) return;
+
+                renderKPIs('weekly');
+                renderOrgTable();
+                redrawCharts('weekly');
+
+                document.getElementById('dp-loadSection').style.display = 'none';
+                document.getElementById('dp-dashboard').style.display = 'block';
+                document.getElementById('dp-clearBtn').style.display = 'inline-block';
+            }
+
+            function processFile(text) {
+                _rawRows = parseCSV(text);
+                if (_rawRows.length === 0) {
+                    alert('No valid data found in CSV');
+                    return;
+                }
+                processData();
+                initPaidState();
+                renderDashboard();
+                localStorage.setItem('dp_data', JSON.stringify(_rawRows));
+            }
+
+            function clearData() {
+                _rawRows = [];
+                _processed = null;
+                // Properly destroy chart instances before clearing
+                Object.values(_charts).forEach(c => c && c.destroy());
+                _charts = {};
+                _paidState = {};
+                localStorage.removeItem('dp_data');
+                // Reset file input so the same file can be re-selected
+                const fileInput = document.getElementById('dp-fileInput');
+                if (fileInput) fileInput.value = '';
+                document.getElementById('dp-loadSection').style.display = 'block';
+                document.getElementById('dp-dashboard').style.display = 'none';
+                document.getElementById('dp-clearBtn').style.display = 'none';
+            }
+
+            function handleFileSelect(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    processFile(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('dp-uploadZone').classList.add('drag-over');
+            }
+
+            function handleDragLeave(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('dp-uploadZone').classList.remove('drag-over');
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('dp-uploadZone').classList.remove('drag-over');
+                const files = e.dataTransfer?.files;
+                if (files && files.length > 0) {
+                    handleFileSelect(files[0]);
+                }
+            }
+
+            let _initialized = false;
+
+            function init() {
+                // Prevent duplicate event listeners on repeated init() calls
+                if (_initialized) {
+                    // If already have saved data, just re-render
+                    const saved = localStorage.getItem('dp_data');
+                    if (saved && _rawRows.length === 0) {
+                        try {
+                            _rawRows = JSON.parse(saved);
+                            processData();
+                            initPaidState();
+                            renderDashboard();
+                        } catch (err) {
+                            console.log('Could not load saved data:', err);
+                        }
+                    }
+                    return;
+                }
+                _initialized = true;
+
+                const uploadZone = document.getElementById('dp-uploadZone');
+                const fileInput = document.getElementById('dp-fileInput');
+
+                // Prevent browser default file-open on drag anywhere on the page
+                const dpView = document.getElementById('view-datapoints');
+                dpView.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+                dpView.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); });
+
+                uploadZone.addEventListener('click', () => fileInput.click());
+                uploadZone.addEventListener('dragover', handleDragOver);
+                uploadZone.addEventListener('dragleave', handleDragLeave);
+                uploadZone.addEventListener('drop', handleDrop);
+
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileSelect(e.target.files[0]);
+                        // Reset so same file can be selected again
+                        fileInput.value = '';
+                    }
+                });
+
+                document.getElementById('dp-clearBtn').addEventListener('click', clearData);
+                document.getElementById('dp-clearBtn2').addEventListener('click', clearData);
+                document.getElementById('dp-reuploadBtn').addEventListener('click', () => {
+                    clearData();
+                    // Small delay so the upload zone is visible before triggering file picker
+                    setTimeout(() => document.getElementById('dp-fileInput').click(), 100);
+                });
+
+                document.querySelectorAll('.dp-toggle-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        setChartPeriod(btn.getAttribute('data-period'));
+                    });
+                });
+
+                const saved = localStorage.getItem('dp_data');
+                if (saved) {
+                    try {
+                        _rawRows = JSON.parse(saved);
+                        processData();
+                        initPaidState();
+                        renderDashboard();
+                    } catch (err) {
+                        console.log('Could not load saved data:', err);
+                    }
+                }
+            }
+
+            return { init, sortOrgTable, onPaidToggle };
+        })();
+    </script>
 </body>
 </html>
