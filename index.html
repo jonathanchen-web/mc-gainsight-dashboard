@@ -1746,15 +1746,12 @@
                     });
                 }
 
-                // Active users per month (users seen in that month)
+                // Active users per month (users whose lastSeenDate falls within that month)
                 const activeUsersPerMonth = months.map(m => {
                     return users.filter(u => {
-                        const ls = u.lastSeenDate || u.lastActive || 0;
+                        const ls = u.lastSeenDate || 0;
                         const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
-                        const su = u.signUpDate || u.createDate || 0;
-                        const suMs = typeof su === 'number' ? su : new Date(su).getTime();
-                        // User was active if last seen >= month start AND signed up <= month end
-                        return lsMs >= m.start && suMs <= m.end;
+                        return lsMs >= m.start && lsMs <= m.end;
                     }).length;
                 });
 
@@ -1767,14 +1764,12 @@
                     }).length;
                 });
 
-                // Active accounts per month
+                // Active accounts per month (accounts whose lastSeenDate falls within that month)
                 const activeAcctsPerMonth = months.map(m => {
                     return accounts.filter(a => {
                         const ls = a.lastSeenDate || 0;
                         const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
-                        const cr = a.createDate || 0;
-                        const crMs = typeof cr === 'number' ? cr : new Date(cr).getTime();
-                        return lsMs >= m.start && crMs <= m.end;
+                        return lsMs >= m.start && lsMs <= m.end;
                     }).length;
                 });
 
@@ -1849,10 +1844,10 @@
                     const domain = email.split('@')[1] || '';
                     if (EXCLUDE_DOMAINS.some(d => domain.includes(d))) return false;
                     if (EXCLUDE_EMAILS.includes(email)) return false;
-                    // Time period filter
-                    const lastActive = u.lastSeenDate || u.lastActive || u.signUpDate || Date.now();
-                    const lastActiveMs = typeof lastActive === 'number' ? lastActive : new Date(lastActive).getTime();
-                    if (lastActiveMs < cutoffMs) return false;
+                    // Time period filter — only use lastSeenDate (actual visit timestamp)
+                    const lastSeen = u.lastSeenDate || 0;
+                    const lastSeenMs = typeof lastSeen === 'number' ? lastSeen : new Date(lastSeen).getTime();
+                    if (!lastSeenMs || lastSeenMs < cutoffMs) return false;
                     // Feature filter: keep users whose inferred top-features overlap with selected features
                     const topFeats = inferTopFeatures(u);
                     if (!topFeats.some(f => featureFilter.includes(f))) return false;
@@ -1902,15 +1897,13 @@
                 const sortedByEvents = [...users].sort((a, b) => (b.totalEvents || 0) - (a.totalEvents || 0));
                 const topUser = sortedByEvents[0] || { name: '—', email: '—', totalEvents: 0, accountName: '—' };
 
-                // Active users/accounts within selected period (using lastSeenDate)
-                const activeUsers = users.filter(u => {
-                    const ls = u.lastSeenDate || u.lastActive || 0;
-                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= cutoffMs;
-                }).length;
+                // Active users/accounts — users already filtered by lastSeenDate >= cutoff
+                const activeUsers = users.length;
 
                 const activeAccounts = accounts.filter(a => {
                     const ls = a.lastSeenDate || 0;
-                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= cutoffMs;
+                    const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
+                    return lsMs && lsMs >= cutoffMs;
                 }).length;
 
                 // Build monthly trend data from feature events
