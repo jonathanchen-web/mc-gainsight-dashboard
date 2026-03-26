@@ -174,18 +174,21 @@ export default async function handler(req, res) {
     const accounts = await fetchAll('accounts', 'accounts');
     await sleep(300);
 
-    // 3. Fetch ALL features (paginated) for hierarchy mapping
-    const features = [];
-    for (let pageNum = 0; pageNum < 10; pageNum++) {
-      const featuresRes = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=${pageNum}`, {
+    // 3. Fetch features (paginated) for hierarchy mapping
+    const featuresRes1 = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=0`, {
+      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+    });
+    const fd1 = featuresRes1.ok ? await featuresRes1.json() : { features: [], isLastPage: true };
+    const features = fd1.features || [];
+    if (!fd1.isLastPage) {
+      await sleep(250);
+      const featuresRes2 = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=1`, {
         headers: { 'X-APTRINSIC-API-KEY': API_KEY },
       });
-      if (!featuresRes.ok) break;
-      const featuresData = await featuresRes.json();
-      const page = featuresData.features || [];
-      features.push(...page);
-      if (featuresData.isLastPage || page.length === 0) break;
-      await sleep(250);
+      if (featuresRes2.ok) {
+        const fd2 = await featuresRes2.json();
+        features.push(...(fd2.features || []));
+      }
     }
     console.log(`[proxy] Fetched ${features.length} features for hierarchy mapping`);
 
