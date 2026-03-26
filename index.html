@@ -1560,7 +1560,9 @@
             // HubSpot exclusion list (loaded async)
             let _excludedNames = new Set();
 
-            // Feature-user map from actual Gainsight PX feature_match events
+            // Raw feature events from Gainsight PX: [{u: userId, m: module, d: dateMs}, ...]
+            let _featureEvents = [];
+            // Feature-user map rebuilt per time period from _featureEvents
             // Maps userId (identifyId) → [top-level module names visited]
             let _featureUserMap = {};
 
@@ -1714,11 +1716,10 @@
                 if (!res.ok) throw new Error(`API error ${res.status}`);
                 const data = await res.json();
 
-                // Store feature-user map from actual Gainsight PX feature_match events
-                if (data.featureUserMap && Object.keys(data.featureUserMap).length > 0) {
-                    _featureUserMap = data.featureUserMap;
-                    const stats = data.featureStats || {};
-                    console.log(`[GS] Feature data loaded: ${stats.totalFeatureMatchEvents || 0} events, ${stats.usersWithFeatureData || 0} users mapped`, stats.moduleCounts || {});
+                // Store raw feature events for time-period-aware filtering
+                if (data.featureEvents && data.featureEvents.length > 0) {
+                    _featureEvents = data.featureEvents;
+                    console.log(`[GS] Feature events loaded: ${_featureEvents.length} events`);
                 } else {
                     console.log('[GS] No feature_match data — using role-based fallback');
                 }
@@ -1733,6 +1734,19 @@
                 const cutoffDate = new Date();
                 cutoffDate.setMonth(cutoffDate.getMonth() - timePeriodMonths);
                 const cutoffMs = cutoffDate.getTime();
+
+                // Rebuild feature-user map filtered to selected time period
+                _featureUserMap = {};
+                for (const evt of _featureEvents) {
+                    if (evt.d < cutoffMs) continue; // skip events outside time window
+                    if (!_featureUserMap[evt.u]) _featureUserMap[evt.u] = new Set();
+                    _featureUserMap[evt.u].add(evt.m);
+                }
+                // Convert Sets to arrays
+                for (const uid of Object.keys(_featureUserMap)) {
+                    _featureUserMap[uid] = [..._featureUserMap[uid]];
+                }
+                console.log(`[GS] Feature map for ${timePeriodMonths}mo: ${Object.keys(_featureUserMap).length} users with visits`);
                 const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
                 const thirtyDayCutoff = Date.now() - thirtyDaysMs;
 

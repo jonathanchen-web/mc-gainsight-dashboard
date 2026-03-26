@@ -116,25 +116,17 @@ function buildFeatureToModuleMap(features) {
   return featureToModule;
 }
 
-// Build userId → [module names] from feature match events
-function buildUserFeatureMap(featureMatchEvents, featureToModule) {
-  const userModules = {}; // identifyId → Set of module names
-
+// Convert raw feature_match events into compact format for the frontend:
+// [{u: identifyId, m: moduleName, d: dateMs}, ...]
+// This lets the frontend filter by time period dynamically
+function compactFeatureEvents(featureMatchEvents, featureToModule) {
+  const events = [];
   for (const evt of featureMatchEvents) {
-    const userId = evt.identifyId;
     const module = featureToModule[evt.featureId];
-    if (!userId || !module) continue;
-
-    if (!userModules[userId]) userModules[userId] = new Set();
-    userModules[userId].add(module);
+    if (!evt.identifyId || !module) continue;
+    events.push({ u: evt.identifyId, m: module, d: evt.date });
   }
-
-  // Convert Sets to arrays for JSON
-  const result = {};
-  for (const [uid, mods] of Object.entries(userModules)) {
-    result[uid] = [...mods];
-  }
-  return result;
+  return events;
 }
 
 export default async function handler(req, res) {
@@ -152,8 +144,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       users: cache.users,
       accounts: cache.accounts,
-      featureUserMap: cache.featureUserMap,
-      featureStats: cache.featureStats,
+      featureEvents: cache.featureEvents,
       cached: true,
       fetchedAt: cacheTime,
       cacheAgeMin: ageMin,
@@ -188,29 +179,16 @@ export default async function handler(req, res) {
     // 5. Fetch feature_match events
     const featureMatchEvents = await fetchFeatureMatchEvents(20);
 
-    // 6. Build userId → [modules visited] map
-    const featureUserMap = buildUserFeatureMap(featureMatchEvents, featureToModule);
+    // 6. Compact events: [{u: userId, m: module, d: dateMs}, ...]
+    const featureEvents = compactFeatureEvents(featureMatchEvents, featureToModule);
 
-    // 7. Compute summary stats
-    const featureStats = {
-      totalFeatureMatchEvents: featureMatchEvents.length,
-      usersWithFeatureData: Object.keys(featureUserMap).length,
-      moduleCounts: {},
-    };
-    for (const mods of Object.values(featureUserMap)) {
-      for (const m of mods) {
-        featureStats.moduleCounts[m] = (featureStats.moduleCounts[m] || 0) + 1;
-      }
-    }
-
-    cache = { users, accounts, featureUserMap, featureStats };
+    cache = { users, accounts, featureEvents };
     cacheTime = Date.now();
 
     return res.status(200).json({
       users: cache.users,
       accounts: cache.accounts,
-      featureUserMap: cache.featureUserMap,
-      featureStats: cache.featureStats,
+      featureEvents: cache.featureEvents,
       cached: false,
       fetchedAt: cacheTime,
       cacheAgeMin: 0,
@@ -222,8 +200,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         users: cache.users,
         accounts: cache.accounts,
-        featureUserMap: cache.featureUserMap || {},
-        featureStats: cache.featureStats || {},
+        featureEvents: cache.featureEvents || [],
         cached: true,
         stale: true,
         fetchedAt: cacheTime,
