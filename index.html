@@ -1503,6 +1503,7 @@
         /* ============= GAINSIGHT (GS) ============= */
         window.GS = (() => {
             const EXCLUDE_DOMAINS = ['manifestclimate', 'grandviewresearch', 'neoimpact'];
+            const EXCLUDE_EMAILS = ['s@solving.co', 'hello@ameliazimmerman.com'];
             const EXCLUDE_ACCT_NAMES = ['akshay testing', 'archana testing'];
             const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
             const PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
@@ -1735,10 +1736,21 @@
                 cutoffDate.setMonth(cutoffDate.getMonth() - timePeriodMonths);
                 const cutoffMs = cutoffDate.getTime();
 
+                // Helper: check if a userId (identifyId / email) should be excluded
+                function isExcludedUser(uid) {
+                    if (!uid) return true;
+                    const lower = uid.toLowerCase();
+                    const domain = lower.split('@')[1] || '';
+                    if (EXCLUDE_DOMAINS.some(d => domain.includes(d))) return true;
+                    if (EXCLUDE_EMAILS.includes(lower)) return true;
+                    return false;
+                }
+
                 // Rebuild feature-user map filtered to selected time period
                 _featureUserMap = {};
                 for (const evt of _featureEvents) {
                     if (evt.d < cutoffMs) continue; // skip events outside time window
+                    if (isExcludedUser(evt.u)) continue; // skip internal/excluded users
                     if (!_featureUserMap[evt.u]) _featureUserMap[evt.u] = new Set();
                     _featureUserMap[evt.u].add(evt.m);
                 }
@@ -1761,8 +1773,10 @@
                     }
                     return u;
                 }).filter(u => {
-                    const domain = (u.email || '').split('@')[1] || '';
+                    const email = (u.email || '').toLowerCase();
+                    const domain = email.split('@')[1] || '';
                     if (EXCLUDE_DOMAINS.some(d => domain.includes(d))) return false;
+                    if (EXCLUDE_EMAILS.includes(email)) return false;
                     // Time period filter
                     const lastActive = u.lastSeenDate || u.lastActive || u.signUpDate || Date.now();
                     const lastActiveMs = typeof lastActive === 'number' ? lastActive : new Date(lastActive).getTime();
