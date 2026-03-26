@@ -1,5 +1,5 @@
-// Temporary test endpoint to discover which Gainsight PX API endpoints
-// return per-feature user visit data. Deploy, hit /api/feature-test, check response.
+// Temporary test endpoint — discovers which Gainsight PX API endpoints
+// return per-feature user visit data.
 
 const API_KEY = process.env.GAINSIGHT_PX_API_KEY;
 const BASE = 'https://api.aptrinsic.com/v1';
@@ -13,11 +13,13 @@ async function tryEndpoint(path) {
       headers: { 'X-APTRINSIC-API-KEY': API_KEY },
     });
     const status = res.status;
-    let body = null;
-    try { body = await res.json(); } catch { body = await res.text(); }
+    // Read body exactly once as text, then try to parse as JSON
+    const text = await res.text();
+    let body;
+    try { body = JSON.parse(text); } catch { body = text; }
     return { path, status, ok: res.ok, body };
   } catch (err) {
-    return { path, error: err.message };
+    return { path, status: 0, ok: false, body: err.message };
   }
 }
 
@@ -26,32 +28,31 @@ export default async function handler(req, res) {
 
   const results = [];
 
-  // Try various possible endpoints for feature usage data
   const endpoints = [
     `/feature/${COMPLIANCE_ID}/stats`,
     `/feature/${COMPLIANCE_ID}/users`,
     `/feature/${COMPLIANCE_ID}/user-activity`,
-    `/feature/stats?featureId=${COMPLIANCE_ID}`,
     `/analytics/feature/${COMPLIANCE_ID}`,
     `/analytics/feature/${COMPLIANCE_ID}/users`,
     `/analytics/features/${COMPLIANCE_ID}/users`,
-    `/analytics/feature/usage?featureId=${COMPLIANCE_ID}`,
-    `/feature/${COMPLIANCE_ID}/event-count`,
-    `/feature/${COMPLIANCE_ID}/adoption`,
     `/usage/feature/${COMPLIANCE_ID}`,
     `/reports/feature/${COMPLIANCE_ID}`,
+    `/feature/${COMPLIANCE_ID}/adoption`,
   ];
 
   for (const ep of endpoints) {
     const result = await tryEndpoint(ep);
-    results.push(result);
-    // Small delay to avoid rate limiting
-    await new Promise(r => setTimeout(r, 200));
+    results.push({
+      path: result.path,
+      status: result.status,
+      ok: result.ok,
+      // Show keys if object, or first 300 chars if string
+      bodyPreview: typeof result.body === 'object' && result.body !== null
+        ? { keys: Object.keys(result.body), sample: JSON.stringify(result.body).slice(0, 500) }
+        : String(result.body).slice(0, 300),
+    });
+    await new Promise(r => setTimeout(r, 250));
   }
 
-  return res.status(200).json({
-    tested: results.length,
-    working: results.filter(r => r.ok).map(r => ({ path: r.path, keys: typeof r.body === 'object' ? Object.keys(r.body || {}) : null })),
-    all: results.map(r => ({ path: r.path, status: r.status, ok: r.ok, bodyPreview: typeof r.body === 'object' ? Object.keys(r.body || {}).join(', ') : String(r.body || r.error).slice(0, 200) })),
-  });
+  return res.status(200).json({ tested: results.length, results });
 }
