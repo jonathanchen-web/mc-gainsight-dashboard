@@ -1,20 +1,27 @@
 // Vercel serverless function — Gainsight PX API proxy with server-side caching
-// Fetches users, accounts, and custom "View Page" events for feature usage tracking
+// Fetches users, accounts, features, and feature_match events for usage tracking
+// Falls back to custom "View Page" events if feature_match returns insufficient data
 
 const API_KEY = process.env.GAINSIGHT_PX_API_KEY;
 const BASE_URL = 'https://api.aptrinsic.com/v1';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Map custom event names to top-level product modules
-// These are "View Page - *" events fired by the Manifest Climate app
+// Top-level module IDs in Gainsight PX (direct children of app.manifestclimate.com)
+const TOP_MODULES = {
+  'dcac118f-d496-45e1-b612-ae9c276463ba': 'Workspace',
+  'e8f9b98a-3835-44c9-9811-b4b505c5c779': 'Tracker',
+  'a2a00aa0-653a-41c5-81fc-ca205f88925b': 'Compliance',
+  '691a246d-6f29-402d-a378-c7ea57bee303': 'Resources',
+  '1ce3e609-b39e-4af9-8848-8ee19575488d': 'Homepage',
+};
+
+// Fallback: map custom event names to modules (used if feature_match fails)
 const EVENT_TO_MODULE = {
-  // Workspace
   'View Page - Workspace V2': 'Workspace',
   'View Page - Climate Profile': 'Workspace',
   'View Page - Climate Actions': 'Workspace',
   'View Page - Disclosure Index': 'Workspace',
   'View Page - Profile': 'Workspace',
-  // Compliance
   'View Page - All Disclosures': 'Compliance',
   'View Page - Disclosure Details': 'Compliance',
   'View Page - Select Standard(s)': 'Compliance',
@@ -22,13 +29,11 @@ const EVENT_TO_MODULE = {
   'View Page - Disclosure Search': 'Compliance',
   'View Page - Comparison View': 'Compliance',
   'View Page - Compliance Summary': 'Compliance',
-  // Tracker
   'View Page - Tracker Data View': 'Tracker',
   'View Page - Tracker Dashboard': 'Tracker',
   'View Page - Details Data': 'Tracker',
   'View Page - Details Your References': 'Tracker',
   'View Page - Details Notes': 'Tracker',
-  // Homepage
   'View Page - Home': 'Homepage',
 };
 
@@ -65,16 +70,91 @@ async function fetchAll(endpoint, key, maxPages = 10) {
   return all;
 }
 
-// Fetch custom events and extract "View Page" events mapped to modules
-// Requests 6 months of data so the frontend can filter by any time period
-async function fetchPageViewEvents(maxPages = 15) {
+// Build a lookup: featureId → top-level module name
+function buildFeatureToModuleMap(features) {
+  const byId = {};
+  for (const f of features) byId[f.id] = f;
+
+  const featureToModule = {};
+
+  function findTopModule(featureId, visited = new Set()) {
+    if (featureToModule[featureId]) return featureToModule[featureId];
+    if (TOP_MODULES[featureId]) return TOP_MODULES[featureId];
+    if (visited.has(featureId)) return null;
+    visited.add(featureId);
+
+    const feat = byId[featureId];
+    if (!feat) return null;
+    const parentId = feat.parentFeatureId;
+    if (!parentId) return null;
+    if (TOP_MODULES[parentId]) return TOP_MODULES[parentId];
+
+    const result = findTopModule(parentId, visited);
+    if (result) featureToModule[featureId] = result;
+    return result;
+  }
+
+  for (const f of features) {
+    const mod = findTopModule(f.id);
+    if (mod) featureToModule[f.id] = mod;
+  }
+
+  return featureToModule;
+}
+
+// Fetch feature_match events with explicit 6-month date range
+async function fetchFeatureMatchEvents(maxPages = 20) {
+  const all = [];
+  let scrollId = null;
+  const now = Date.now();
+  const sixMonthsAgo = now - (180 * 24 * 60 * 60 * 1000);
+
+  for (let page = 0; page < maxPages; page++) {
+    const url = scrollId
+      ? `${BASE_URL}/events/feature_match?scrollId=${encodeURIComponent(scrollId)}`
+      : `${BASE_URL}/events/feature_match?pageSize=500&dateRangeStart=${sixMonthsAgo}&dateRangeEnd=${now}`;
+
+    const res = await fetch(url, {
+      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+    });
+
+    if (!res.ok) {
+      console.error(`feature_match returned ${res.status}`);
+      break;
+    }
+
+    const data = await res.json();
+    const items = data.featureMatchEvents || [];
+    all.push(...items);
+
+    if (items.length === 0 || !data.scrollId) break;
+    scrollId = data.scrollId;
+    await sleep(250);
+  }
+
+  console.log(`[proxy] feature_match: fetched ${all.length} raw events`);
+  return all;
+}
+
+// Convert feature_match events to compact format using hierarchy mapping
+function compactFeatureEvents(featureMatchEvents, featureToModule) {
+  const events = [];
+  let noModule = 0;
+  for (const evt of featureMatchEvents) {
+    if (!evt.identifyId) continue;
+    const module = featureToModule[evt.featureId];
+    if (!module) { noModule++; continue; }
+    events.push({ u: evt.identifyId, m: module, d: evt.date });
+  }
+  console.log(`[proxy] feature_match compacted: ${events.length} mapped, ${noModule} unmapped`);
+  return events;
+}
+
+// Fallback: fetch custom "View Page" events mapped to modules
+async function fetchCustomPageViewEvents(maxPages = 15) {
   const events = [];
   let scrollId = null;
   let totalRaw = 0;
-  let unmapped = 0;
-  const unmappedNames = new Set();
-
-  // Request 6 months of data
   const now = Date.now();
   const sixMonthsAgo = now - (180 * 24 * 60 * 60 * 1000);
 
@@ -87,23 +167,16 @@ async function fetchPageViewEvents(maxPages = 15) {
       headers: { 'X-APTRINSIC-API-KEY': API_KEY },
     });
 
-    if (!res.ok) {
-      console.error(`custom events returned ${res.status}`);
-      break;
-    }
+    if (!res.ok) { console.error(`custom events returned ${res.status}`); break; }
 
     const data = await res.json();
     const items = data.customEvents || [];
     totalRaw += items.length;
 
-    // Only keep "View Page" events that map to a known module
     for (const evt of items) {
       const module = EVENT_TO_MODULE[evt.eventName];
       if (module && evt.identifyId) {
         events.push({ u: evt.identifyId, m: module, d: evt.date });
-      } else if (evt.eventName && evt.eventName.startsWith('View Page') && !EVENT_TO_MODULE[evt.eventName]) {
-        unmapped++;
-        unmappedNames.add(evt.eventName);
       }
     }
 
@@ -112,10 +185,7 @@ async function fetchPageViewEvents(maxPages = 15) {
     await sleep(250);
   }
 
-  console.log(`[proxy] Custom events: ${totalRaw} raw, ${events.length} mapped page views`);
-  if (unmappedNames.size > 0) {
-    console.log(`[proxy] Unmapped View Page events (${unmapped}): ${[...unmappedNames].join(', ')}`);
-  }
+  console.log(`[proxy] Custom events fallback: ${totalRaw} raw, ${events.length} mapped`);
   return events;
 }
 
@@ -155,17 +225,53 @@ export default async function handler(req, res) {
     const accounts = await fetchAll('accounts', 'accounts');
     await sleep(300);
 
-    // 3. Fetch custom "View Page" events mapped to modules
-    const featureEvents = await fetchPageViewEvents(15);
+    // 3. Fetch ALL features (paginated) for hierarchy mapping
+    const featuresRes1 = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=0`, {
+      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+    });
+    const fd1 = featuresRes1.ok ? await featuresRes1.json() : { features: [], isLastPage: true };
+    const features = fd1.features || [];
+    if (!fd1.isLastPage) {
+      await sleep(250);
+      const featuresRes2 = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=1`, {
+        headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+      });
+      if (featuresRes2.ok) {
+        const fd2 = await featuresRes2.json();
+        features.push(...(fd2.features || []));
+      }
+    }
+    console.log(`[proxy] Fetched ${features.length} features`);
 
-    // Count events per module for debugging
+    // 4. Build featureId → module lookup
+    const featureToModule = buildFeatureToModuleMap(features);
+    await sleep(300);
+
+    // 5. Try feature_match events first (matches Gainsight PX UI)
+    let featureEvents = [];
+    let dataSource = 'feature_match';
+    const featureMatchEvents = await fetchFeatureMatchEvents(20);
+
+    if (featureMatchEvents.length > 0) {
+      featureEvents = compactFeatureEvents(featureMatchEvents, featureToModule);
+    }
+
+    // 6. If feature_match returned too little data, fall back to custom events
+    if (featureEvents.length < 20) {
+      console.log(`[proxy] feature_match only returned ${featureEvents.length} events, falling back to custom events`);
+      await sleep(300);
+      featureEvents = await fetchCustomPageViewEvents(15);
+      dataSource = 'custom_events';
+    }
+
+    // Debug: count per module
     const moduleCounts = {};
     const uniqueUsers = new Set();
     for (const evt of featureEvents) {
       moduleCounts[evt.m] = (moduleCounts[evt.m] || 0) + 1;
       uniqueUsers.add(evt.u);
     }
-    console.log(`[proxy] Module counts: ${JSON.stringify(moduleCounts)}, unique users: ${uniqueUsers.size}`);
+    console.log(`[proxy] Final (${dataSource}): ${JSON.stringify(moduleCounts)}, ${uniqueUsers.size} users`);
 
     cache = { users, accounts, featureEvents };
     cacheTime = Date.now();
@@ -178,7 +284,7 @@ export default async function handler(req, res) {
       fetchedAt: cacheTime,
       cacheAgeMin: 0,
       nextRefreshMin: 60,
-      _debug: { mappedEvents: featureEvents.length, uniqueUsers: uniqueUsers.size, moduleCounts },
+      _debug: { dataSource, mappedEvents: featureEvents.length, uniqueUsers: uniqueUsers.size, moduleCounts, features: features.length },
     });
   } catch (err) {
     if (cache) {
