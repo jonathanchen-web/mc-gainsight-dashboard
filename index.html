@@ -1822,7 +1822,7 @@
             }
 
             function processData(raw, timePeriodMonths, featureFilter) {
-                timePeriodMonths = timePeriodMonths || 6;
+                timePeriodMonths = (timePeriodMonths !== undefined && timePeriodMonths !== null) ? timePeriodMonths : 6;
                 featureFilter = featureFilter || CORE_FEATURES;
 
                 // Use calendar month boundaries to match Gainsight PX's definition
