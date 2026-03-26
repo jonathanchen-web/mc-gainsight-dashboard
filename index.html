@@ -1732,6 +1732,66 @@
                 return data;
             }
 
+            // Build monthly trend data from users, accounts, and feature events
+            function buildMonthlyTrends(users, accounts, featureEvents, timePeriodMonths, cutoffMs) {
+                const now = new Date();
+                const months = [];
+                // Generate month labels for the selected period
+                for (let i = timePeriodMonths - 1; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    months.push({
+                        label: d.toLocaleString('en', { month: 'short', year: '2-digit' }),
+                        start: d.getTime(),
+                        end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime(),
+                    });
+                }
+
+                // Active users per month (users seen in that month)
+                const activeUsersPerMonth = months.map(m => {
+                    return users.filter(u => {
+                        const ls = u.lastSeenDate || u.lastActive || 0;
+                        const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
+                        const su = u.signUpDate || u.createDate || 0;
+                        const suMs = typeof su === 'number' ? su : new Date(su).getTime();
+                        // User was active if last seen >= month start AND signed up <= month end
+                        return lsMs >= m.start && suMs <= m.end;
+                    }).length;
+                });
+
+                // New users per month (signed up in that month)
+                const newUsersPerMonth = months.map(m => {
+                    return users.filter(u => {
+                        const su = u.signUpDate || u.createDate || 0;
+                        const suMs = typeof su === 'number' ? su : new Date(su).getTime();
+                        return suMs >= m.start && suMs <= m.end;
+                    }).length;
+                });
+
+                // Active accounts per month
+                const activeAcctsPerMonth = months.map(m => {
+                    return accounts.filter(a => {
+                        const ls = a.lastSeenDate || 0;
+                        const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
+                        const cr = a.createDate || 0;
+                        const crMs = typeof cr === 'number' ? cr : new Date(cr).getTime();
+                        return lsMs >= m.start && crMs <= m.end;
+                    }).length;
+                });
+
+                // Page view events per month (from featureEvents)
+                const eventsPerMonth = months.map(m => {
+                    return featureEvents.filter(e => e.d >= m.start && e.d <= m.end).length;
+                });
+
+                return {
+                    labels: months.map(m => m.label),
+                    activeUsers: activeUsersPerMonth,
+                    newUsers: newUsersPerMonth,
+                    activeAccounts: activeAcctsPerMonth,
+                    events: eventsPerMonth,
+                };
+            }
+
             function processData(raw, timePeriodMonths, featureFilter) {
                 timePeriodMonths = timePeriodMonths || 6;
                 featureFilter = featureFilter || CORE_FEATURES;
@@ -1763,8 +1823,6 @@
                     _featureUserMap[uid] = [..._featureUserMap[uid]];
                 }
                 console.log(`[GS] Feature map for ${timePeriodMonths}mo: ${Object.keys(_featureUserMap).length} users with visits`);
-                const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-                const thirtyDayCutoff = Date.now() - thirtyDaysMs;
 
                 let users = (raw.users || []).map(u => {
                     // Normalize field names: Gainsight PX returns firstName/lastName, not name
@@ -1834,27 +1892,32 @@
                 const sortedByEvents = [...users].sort((a, b) => (b.totalEvents || 0) - (a.totalEvents || 0));
                 const topUser = sortedByEvents[0] || { name: '—', email: '—', totalEvents: 0, accountName: '—' };
 
-                // Monthly active metrics
-                const monthlyActiveUsers = users.filter(u => {
+                // Active users/accounts within selected period (using lastSeenDate)
+                const activeUsers = users.filter(u => {
                     const ls = u.lastSeenDate || u.lastActive || 0;
-                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= thirtyDayCutoff;
+                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= cutoffMs;
                 }).length;
 
-                const monthlyActiveAccounts = accounts.filter(a => {
+                const activeAccounts = accounts.filter(a => {
                     const ls = a.lastSeenDate || 0;
-                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= thirtyDayCutoff;
+                    return (typeof ls === 'number' ? ls : new Date(ls).getTime()) >= cutoffMs;
                 }).length;
+
+                // Build monthly trend data from feature events
+                const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs);
 
                 return {
                     accounts: accounts.slice(0, 10),
                     topAccount: topAcct,
                     users: sortedByEvents.slice(0, 10),
                     topUser: topUser,
-                    monthlyActiveUsers,
-                    monthlyActiveAccounts,
+                    activeUsers,
+                    activeAccounts,
                     totalUsers: users.length,
                     allAccounts: accounts,
                     allUsers: users,
+                    timePeriodMonths,
+                    trendData,
                 };
             }
 
@@ -1866,11 +1929,12 @@
                 document.getElementById('gs-kpi-top-user').textContent = data.topUser.name || '—';
                 document.getElementById('gs-kpi-top-user-company').textContent = data.topUser.accountName || '—';
 
-                document.getElementById('gs-kpi-maa').textContent = data.monthlyActiveAccounts;
-                document.getElementById('gs-kpi-maa-detail').textContent = `of ${data.allAccounts.length} total`;
+                const periodLabel = data.timePeriodMonths === 1 ? 'Last Month' : `Last ${data.timePeriodMonths}mo`;
+                document.getElementById('gs-kpi-maa').textContent = data.activeAccounts;
+                document.getElementById('gs-kpi-maa-detail').textContent = `of ${data.allAccounts.length} total (${periodLabel})`;
 
-                document.getElementById('gs-kpi-mau').textContent = data.monthlyActiveUsers;
-                document.getElementById('gs-kpi-mau-detail').textContent = `of ${data.totalUsers} total`;
+                document.getElementById('gs-kpi-mau').textContent = data.activeUsers;
+                document.getElementById('gs-kpi-mau-detail').textContent = `of ${data.totalUsers} total (${periodLabel})`;
 
                 // Top Accounts Table
                 const acctHtml = data.accounts.map((a, i) => `
@@ -2089,18 +2153,8 @@
                 renderFeatureTable('');
                 gsFeatureFilter?.addEventListener('change', () => renderFeatureTable(gsFeatureFilter.value));
 
-                // MoM Trends - create dummy data
-                const now = new Date();
-                const months = [];
-                for (let i = 5; i >= 0; i--) {
-                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    months.push(d.toLocaleString('en', { month: 'short' }));
-                }
-
-                const newUsersData = [5, 8, 12, 15, 18, 22];
-                const activeUsersData = [45, 52, 61, 68, 75, 82];
-                const newAcctsData = [1, 2, 3, 2, 4, 3];
-                const activeAcctsData = [15, 17, 20, 22, 24, 26];
+                // MoM Trends — use real data from selected time period
+                const { labels: months, activeUsers: activeUsersData, newUsers: newUsersData, activeAccounts: activeAcctsData, events: eventsData } = data.trendData;
 
                 // New Users Line
                 const newUsersCtx = document.getElementById('gs-newUsersLine')?.getContext('2d');

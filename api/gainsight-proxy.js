@@ -66,7 +66,7 @@ async function fetchAll(endpoint, key, maxPages = 10) {
 }
 
 // Fetch custom events and extract "View Page" events mapped to modules
-// Uses scrollId pagination; default 30-day window from the API
+// Requests 6 months of data so the frontend can filter by any time period
 async function fetchPageViewEvents(maxPages = 15) {
   const events = [];
   let scrollId = null;
@@ -74,10 +74,14 @@ async function fetchPageViewEvents(maxPages = 15) {
   let unmapped = 0;
   const unmappedNames = new Set();
 
+  // Request 6 months of data
+  const now = Date.now();
+  const sixMonthsAgo = now - (180 * 24 * 60 * 60 * 1000);
+
   for (let page = 0; page < maxPages; page++) {
     const url = scrollId
       ? `${BASE_URL}/events/custom?scrollId=${encodeURIComponent(scrollId)}`
-      : `${BASE_URL}/events/custom?pageSize=1000`;
+      : `${BASE_URL}/events/custom?pageSize=1000&dateRangeStart=${sixMonthsAgo}&dateRangeEnd=${now}`;
 
     const res = await fetch(url, {
       headers: { 'X-APTRINSIC-API-KEY': API_KEY },
