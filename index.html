@@ -2104,14 +2104,19 @@
                     topFeatureMap[parent] = (topFeatureMap[parent] || 0) + val;
                 });
 
-                // Top-Level Pie Chart
+                // Top-Level Pie Chart with percentages
                 const pieCtx = document.getElementById('gs-featurePieChart')?.getContext('2d');
                 if (pieCtx) {
                     const pieLabels = TOP_FEATURES.filter(f => topFeatureMap[f] > 0);
+                    const pieTotal = pieLabels.reduce((s, f) => s + topFeatureMap[f], 0);
+                    const pieLabelsWithPct = pieLabels.map(f => {
+                        const pct = pieTotal > 0 ? Math.round((topFeatureMap[f] / pieTotal) * 100) : 0;
+                        return `${f} (${pct}%)`;
+                    });
                     charts.featurePie = new Chart(pieCtx, {
                         type: 'doughnut',
                         data: {
-                            labels: pieLabels,
+                            labels: pieLabelsWithPct,
                             datasets: [{
                                 data: pieLabels.map(f => topFeatureMap[f]),
                                 backgroundColor: pieLabels.map(f => FEATURE_HIERARCHY[f].color),
@@ -2121,7 +2126,16 @@
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
-                                legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 10, font: { size: 12 } } }
+                                legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 10, font: { size: 12 } } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(ctx) {
+                                            const val = ctx.raw;
+                                            const pct = pieTotal > 0 ? Math.round((val / pieTotal) * 100) : 0;
+                                            return ` ${val.toLocaleString()} events (${pct}%)`;
+                                        }
+                                    }
+                                }
                             }
                         }
                     });
@@ -2130,18 +2144,23 @@
                 // Sub-Feature Grouped Bar Chart (bars colored by parent feature)
                 const barCtx = document.getElementById('gs-subFeatureBarChart')?.getContext('2d');
                 if (barCtx) {
-                    // Build ordered list: group subs by parent, sorted high-to-low within each group
+                    // Group subs by parent, sort parents by total descending, sort subs within each group descending
+                    const parentTotals = TOP_FEATURES
+                        .filter(f => topFeatureMap[f] > 0)
+                        .map(f => ({ parent: f, total: topFeatureMap[f] }))
+                        .sort((a, b) => b.total - a.total);
+
                     const allSubs = [];
-                    TOP_FEATURES.forEach(parent => {
+                    parentTotals.forEach(({ parent }) => {
                         const subs = (FEATURE_HIERARCHY[parent].subs.length > 0)
                             ? FEATURE_HIERARCHY[parent].subs
-                            : [parent]; // Integrations has no subs, show itself
-                        subs.forEach(s => {
-                            allSubs.push({ name: s, parent, value: subFeatureMap[s] || 0 });
-                        });
+                            : [parent];
+                        const subsWithValues = subs
+                            .map(s => ({ name: s, parent, value: subFeatureMap[s] || 0 }))
+                            .filter(s => s.value > 0)
+                            .sort((a, b) => b.value - a.value);
+                        allSubs.push(...subsWithValues);
                     });
-                    // Sort by value descending
-                    allSubs.sort((a, b) => b.value - a.value);
 
                     charts.subFeatureBar = new Chart(barCtx, {
                         type: 'bar',
