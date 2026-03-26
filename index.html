@@ -1700,7 +1700,17 @@
                 const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
                 const thirtyDayCutoff = Date.now() - thirtyDaysMs;
 
-                let users = (raw.users || []).filter(u => {
+                let users = (raw.users || []).map(u => {
+                    // Normalize field names: Gainsight PX returns firstName/lastName, not name
+                    if (!u.name && (u.firstName || u.lastName)) {
+                        u.name = [u.firstName, u.lastName].filter(Boolean).join(' ');
+                    }
+                    // Normalize event count: Gainsight PX returns numberOfVisits, not totalEvents
+                    if (u.totalEvents === undefined && u.numberOfVisits !== undefined) {
+                        u.totalEvents = u.numberOfVisits;
+                    }
+                    return u;
+                }).filter(u => {
                     const domain = (u.email || '').split('@')[1] || '';
                     if (EXCLUDE_DOMAINS.some(d => domain.includes(d))) return false;
                     // Time period filter

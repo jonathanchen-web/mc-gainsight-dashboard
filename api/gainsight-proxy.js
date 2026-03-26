@@ -12,6 +12,39 @@ let cacheTime = 0;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Paginate through all results using Gainsight's scrollId mechanism
+async function fetchAll(endpoint, key) {
+  const all = [];
+  let scrollId = null;
+  const maxPages = 10; // safety limit
+
+  for (let page = 0; page < maxPages; page++) {
+    const url = scrollId
+      ? `${BASE_URL}/${endpoint}?scrollId=${encodeURIComponent(scrollId)}`
+      : `${BASE_URL}/${endpoint}?pageSize=200`;
+
+    const res = await fetch(url, {
+      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Gainsight /${endpoint} returned ${res.status}`);
+    }
+
+    const data = await res.json();
+    const items = data[key] || [];
+    all.push(...items);
+
+    // Stop if no more results or no scrollId for next page
+    if (items.length === 0 || !data.scrollId) break;
+    scrollId = data.scrollId;
+
+    await sleep(400); // rate-limit courtesy
+  }
+
+  return all;
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -45,31 +78,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch users
-    const usersRes = await fetch(`${BASE_URL}/users?pageSize=200`, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
-    if (!usersRes.ok) {
-      throw new Error(`Gainsight /users returned ${usersRes.status}`);
-    }
-    const usersData = await usersRes.json();
+    // Fetch ALL users (paginated)
+    const users = await fetchAll('users', 'users');
 
     await sleep(600);
 
-    // Fetch accounts
-    const accountsRes = await fetch(`${BASE_URL}/accounts?pageSize=200`, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
-    if (!accountsRes.ok) {
-      throw new Error(`Gainsight /accounts returned ${accountsRes.status}`);
-    }
-    const accountsData = await accountsRes.json();
+    // Fetch ALL accounts (paginated)
+    const accounts = await fetchAll('accounts', 'accounts');
 
     // Store in server cache
-    cache = {
-      users: usersData.users || [],
-      accounts: accountsData.accounts || [],
-    };
+    cache = { users, accounts };
     cacheTime = Date.now();
 
     return res.status(200).json({
