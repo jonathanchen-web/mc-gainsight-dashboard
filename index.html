@@ -1778,6 +1778,15 @@
                     }).length;
                 });
 
+                // New accounts per month (created in that month)
+                const newAcctsPerMonth = months.map(m => {
+                    return accounts.filter(a => {
+                        const cr = a.createDate || 0;
+                        const crMs = typeof cr === 'number' ? cr : new Date(cr).getTime();
+                        return crMs >= m.start && crMs <= m.end;
+                    }).length;
+                });
+
                 // Page view events per month (from featureEvents)
                 const eventsPerMonth = months.map(m => {
                     return featureEvents.filter(e => e.d >= m.start && e.d <= m.end).length;
@@ -1788,6 +1797,7 @@
                     activeUsers: activeUsersPerMonth,
                     newUsers: newUsersPerMonth,
                     activeAccounts: activeAcctsPerMonth,
+                    newAccounts: newAcctsPerMonth,
                     events: eventsPerMonth,
                 };
             }
@@ -2154,7 +2164,7 @@
                 gsFeatureFilter?.addEventListener('change', () => renderFeatureTable(gsFeatureFilter.value));
 
                 // MoM Trends — use real data from selected time period
-                const { labels: months, activeUsers: activeUsersData, newUsers: newUsersData, activeAccounts: activeAcctsData, events: eventsData } = data.trendData;
+                const { labels: months, activeUsers: activeUsersData, newUsers: newUsersData, activeAccounts: activeAcctsData, newAccounts: newAcctsData, events: eventsData } = data.trendData;
 
                 // New Users Line
                 const newUsersCtx = document.getElementById('gs-newUsersLine')?.getContext('2d');
