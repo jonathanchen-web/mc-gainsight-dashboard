@@ -42,25 +42,22 @@ async function fetchAll(endpoint, key, maxPages = 10) {
 
     if (items.length === 0 || !data.scrollId) break;
     scrollId = data.scrollId;
-    await sleep(400);
+    await sleep(250);
   }
 
   return all;
 }
 
-// Fetch feature_match events with explicit date range (uses scrollId pagination)
-async function fetchFeatureMatchEvents(maxPages = 30) {
+// Fetch feature_match events (uses scrollId pagination)
+// No date params — the endpoint returns all available events by default
+async function fetchFeatureMatchEvents(maxPages = 20) {
   const all = [];
   let scrollId = null;
-
-  // Request 12 months of data so the frontend can filter by any time period
-  const now = Date.now();
-  const twelveMonthsAgo = now - (365 * 24 * 60 * 60 * 1000);
 
   for (let page = 0; page < maxPages; page++) {
     const url = scrollId
       ? `${BASE_URL}/events/feature_match?scrollId=${encodeURIComponent(scrollId)}`
-      : `${BASE_URL}/events/feature_match?pageSize=500&date=${twelveMonthsAgo}&dateEnd=${now}`;
+      : `${BASE_URL}/events/feature_match?pageSize=200`;
 
     const res = await fetch(url, {
       headers: { 'X-APTRINSIC-API-KEY': API_KEY },
@@ -77,10 +74,10 @@ async function fetchFeatureMatchEvents(maxPages = 30) {
 
     if (items.length === 0 || !data.scrollId) break;
     scrollId = data.scrollId;
-    await sleep(400);
+    await sleep(250);
   }
 
-  console.log(`[proxy] feature_match: fetched ${all.length} raw events across ${Math.min(maxPages, all.length > 0 ? Math.ceil(all.length/500) : 1)} pages`);
+  console.log(`[proxy] feature_match: fetched ${all.length} raw events`);
   return all;
 }
 
@@ -171,11 +168,11 @@ export default async function handler(req, res) {
   try {
     // 1. Fetch users
     const users = await fetchAll('users', 'users');
-    await sleep(500);
+    await sleep(300);
 
     // 2. Fetch accounts
     const accounts = await fetchAll('accounts', 'accounts');
-    await sleep(500);
+    await sleep(300);
 
     // 3. Fetch ALL features (paginated) for hierarchy mapping
     const features = [];
@@ -188,13 +185,13 @@ export default async function handler(req, res) {
       const page = featuresData.features || [];
       features.push(...page);
       if (featuresData.isLastPage || page.length === 0) break;
-      await sleep(400);
+      await sleep(250);
     }
     console.log(`[proxy] Fetched ${features.length} features for hierarchy mapping`);
-    await sleep(500);
 
     // 4. Build featureId → top-level module lookup
     const featureToModule = buildFeatureToModuleMap(features);
+    await sleep(300);
 
     // 5. Fetch feature_match events
     const featureMatchEvents = await fetchFeatureMatchEvents(20);
@@ -208,7 +205,7 @@ export default async function handler(req, res) {
       moduleCounts[evt.m] = (moduleCounts[evt.m] || 0) + 1;
     }
 
-    cache = { users, accounts, featureEvents, rawEventCount: featureMatchEvents.length, featureCount: features.length, moduleCounts };
+    cache = { users, accounts, featureEvents };
     cacheTime = Date.now();
 
     return res.status(200).json({
