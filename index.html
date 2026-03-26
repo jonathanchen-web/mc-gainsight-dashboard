@@ -1724,6 +1724,10 @@
                 } else {
                     console.log('[GS] No feature_match data — using role-based fallback');
                 }
+                // Log debug stats from proxy
+                if (data._debug) {
+                    console.log('[GS] Proxy debug:', JSON.stringify(data._debug));
+                }
 
                 return data;
             }

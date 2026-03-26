@@ -48,22 +48,25 @@ async function fetchAll(endpoint, key, maxPages = 10) {
   return all;
 }
 
-// Fetch feature_match events (uses same scrollId pagination)
-async function fetchFeatureMatchEvents(maxPages = 20) {
+// Fetch feature_match events with explicit date range (uses scrollId pagination)
+async function fetchFeatureMatchEvents(maxPages = 30) {
   const all = [];
   let scrollId = null;
+
+  // Request 12 months of data so the frontend can filter by any time period
+  const now = Date.now();
+  const twelveMonthsAgo = now - (365 * 24 * 60 * 60 * 1000);
 
   for (let page = 0; page < maxPages; page++) {
     const url = scrollId
       ? `${BASE_URL}/events/feature_match?scrollId=${encodeURIComponent(scrollId)}`
-      : `${BASE_URL}/events/feature_match?pageSize=200`;
+      : `${BASE_URL}/events/feature_match?pageSize=500&date=${twelveMonthsAgo}&dateEnd=${now}`;
 
     const res = await fetch(url, {
       headers: { 'X-APTRINSIC-API-KEY': API_KEY },
     });
 
     if (!res.ok) {
-      // Don't fail the whole request if feature_match fails
       console.error(`feature_match returned ${res.status}`);
       break;
     }
@@ -77,6 +80,7 @@ async function fetchFeatureMatchEvents(maxPages = 20) {
     await sleep(400);
   }
 
+  console.log(`[proxy] feature_match: fetched ${all.length} raw events across ${Math.min(maxPages, all.length > 0 ? Math.ceil(all.length/500) : 1)} pages`);
   return all;
 }
 
@@ -121,10 +125,18 @@ function buildFeatureToModuleMap(features) {
 // This lets the frontend filter by time period dynamically
 function compactFeatureEvents(featureMatchEvents, featureToModule) {
   const events = [];
+  let noUser = 0;
+  let noModule = 0;
+  const unmappedFeatures = new Set();
   for (const evt of featureMatchEvents) {
+    if (!evt.identifyId) { noUser++; continue; }
     const module = featureToModule[evt.featureId];
-    if (!evt.identifyId || !module) continue;
+    if (!module) { noModule++; unmappedFeatures.add(evt.featureId); continue; }
     events.push({ u: evt.identifyId, m: module, d: evt.date });
+  }
+  console.log(`[proxy] compactFeatureEvents: ${events.length} mapped, ${noUser} skipped (no user), ${noModule} skipped (no module mapping for ${unmappedFeatures.size} unique features)`);
+  if (unmappedFeatures.size > 0) {
+    console.log(`[proxy] Unmapped feature IDs: ${[...unmappedFeatures].slice(0, 10).join(', ')}${unmappedFeatures.size > 10 ? '...' : ''}`);
   }
   return events;
 }
@@ -165,12 +177,20 @@ export default async function handler(req, res) {
     const accounts = await fetchAll('accounts', 'accounts');
     await sleep(500);
 
-    // 3. Fetch features list (for hierarchy mapping)
-    const featuresRes = await fetch(`${BASE_URL}/feature?pageSize=200`, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
-    const featuresData = featuresRes.ok ? await featuresRes.json() : { features: [] };
-    const features = featuresData.features || [];
+    // 3. Fetch ALL features (paginated) for hierarchy mapping
+    const features = [];
+    for (let pageNum = 0; pageNum < 10; pageNum++) {
+      const featuresRes = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=${pageNum}`, {
+        headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+      });
+      if (!featuresRes.ok) break;
+      const featuresData = await featuresRes.json();
+      const page = featuresData.features || [];
+      features.push(...page);
+      if (featuresData.isLastPage || page.length === 0) break;
+      await sleep(400);
+    }
+    console.log(`[proxy] Fetched ${features.length} features for hierarchy mapping`);
     await sleep(500);
 
     // 4. Build featureId → top-level module lookup
@@ -182,7 +202,13 @@ export default async function handler(req, res) {
     // 6. Compact events: [{u: userId, m: module, d: dateMs}, ...]
     const featureEvents = compactFeatureEvents(featureMatchEvents, featureToModule);
 
-    cache = { users, accounts, featureEvents };
+    // Count events per module for debugging
+    const moduleCounts = {};
+    for (const evt of featureEvents) {
+      moduleCounts[evt.m] = (moduleCounts[evt.m] || 0) + 1;
+    }
+
+    cache = { users, accounts, featureEvents, rawEventCount: featureMatchEvents.length, featureCount: features.length, moduleCounts };
     cacheTime = Date.now();
 
     return res.status(200).json({
@@ -193,6 +219,7 @@ export default async function handler(req, res) {
       fetchedAt: cacheTime,
       cacheAgeMin: 0,
       nextRefreshMin: 60,
+      _debug: { rawEvents: featureMatchEvents.length, mappedEvents: featureEvents.length, features: features.length, moduleCounts },
     });
   } catch (err) {
     if (cache) {
