@@ -1784,13 +1784,17 @@
                     }).length;
                 });
 
-                // Active accounts per month (accounts whose lastSeenDate falls within that month)
+                // Active accounts per month (accounts with at least one user whose lastSeenDate falls within that month)
                 const activeAcctsPerMonth = months.map(m => {
-                    return accounts.filter(a => {
-                        const ls = a.lastSeenDate || 0;
+                    const activeAcctIds = new Set();
+                    users.forEach(u => {
+                        const ls = u.lastSeenDate || 0;
                         const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
-                        return lsMs >= m.start && lsMs <= m.end;
-                    }).length;
+                        if (lsMs >= m.start && lsMs <= m.end && u.accountId) {
+                            activeAcctIds.add(u.accountId);
+                        }
+                    });
+                    return activeAcctIds.size;
                 });
 
                 // New accounts per month (created in that month)
@@ -1965,11 +1969,8 @@
                 // Active users/accounts — users already filtered by lastSeenDate >= cutoff
                 const activeUsers = users.length;
 
-                const activeAccounts = accounts.filter(a => {
-                    const ls = a.lastSeenDate || 0;
-                    const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
-                    return lsMs && lsMs >= cutoffMs;
-                }).length;
+                // An account is active if it has at least one active user in the period
+                const activeAccounts = accounts.filter(a => a.userCount > 0).length;
 
                 // Build monthly trend data from feature events
                 const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs);
