@@ -1865,7 +1865,8 @@
                     if (!_featureUserMap[evt.u]) _featureUserMap[evt.u] = new Set();
                     _featureUserMap[evt.u].add(evt.m);
                     // Sub-feature counts from actual event name
-                    const sub = PAGE_TO_SUB[evt.e] || null;
+                    // evt.e = event name (from proxy), fall back to module-based first sub if missing
+                    const sub = (evt.e && PAGE_TO_SUB[evt.e]) || (MODULE_TO_SUBS[evt.m] && MODULE_TO_SUBS[evt.m][0]) || null;
                     if (sub) {
                         _subFeatureCounts[sub] = (_subFeatureCounts[sub] || 0) + 1;
                         if (!_subFeatureUsers[sub]) _subFeatureUsers[sub] = new Set();
