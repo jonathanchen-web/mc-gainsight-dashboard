@@ -1530,21 +1530,31 @@
                 'Assessments': 'Assessments', 'DisclosureSearch': 'Disclosure Search', 'Compare': 'Compare',
             };
 
-            // Map page views to sub-features
+            // Map custom event names to specific sub-features
             const PAGE_TO_SUB = {
-                'View Page - Home':'ClimateAction','View Page - Workspace V2':'ClimateAction',
+                'View Page - Home':'ClimateAction',
+                'View Page - Workspace V2':'ClimateAction',
                 'View Page - Climate Actions':'ClimateAction',
                 'View Page - Disclosure Index':'DisclosureIndex',
                 'View Page - Climate Profile':'ClimateProfile',
-                'View Page - Tracker Data View':'Data','View Page - Tracker Dashboard':'Data',
-                'View Page - Select Standard(s)':'Data','View Page - Summary':'Data',
-                'Tracker Reference':'Data',
-                'View Page - All Disclosures':'Assessments','View Page - Disclosure Details':'Assessments',
+                'View Page - Profile':'ClimateProfile',
+                'View Page - Tracker Data View':'Data',
+                'View Page - Details Data':'Data',
+                'View Page - Details Notes':'Data',
+                'View Page - Tracker Dashboard':'Insights',
+                'View Page - Details Your References':'BestPractices',
+                'View Page - All Disclosures':'Assessments',
+                'View Page - Disclosure Details':'Assessments',
+                'View Page - Select Standard(s)':'Assessments',
+                'View Page - Summary':'Assessments',
+                'View Page - Compliance Summary':'Assessments',
                 'View Page - Disclosure Search':'DisclosureSearch',
                 'View Page - Comparison View':'Compare',
-                'View Page - MCP Documentation':'Integrations','View Page - MCP Secreat Keys':'Integrations',
+                'View Page - MCP Documentation':'Integrations',
+                'View Page - MCP Secreat Keys':'Integrations',
                 'MCP Documentation tab select':'Integrations',
                 'Disclosure clickthrough rate':'Assessments',
+                'Tracker Reference':'BestPractices',
             };
 
             // Map sub-feature to parent (Integrations is its own parent)
@@ -1567,6 +1577,8 @@
             // Feature-user map rebuilt per time period from _featureEvents
             // Maps userId (identifyId) → [top-level module names visited]
             let _featureUserMap = {};
+            // Maps userId → Set of actual sub-features visited (from event names)
+            let _userSubFeatureMap = {};
 
             let charts = {};
             let _lastData = null; // Store last processed data for filter re-renders
@@ -1599,9 +1611,16 @@
             function inferFeatures(user) {
                 const userId = user.identifyId || user.id;
 
-                // Primary signal: actual Gainsight PX feature_match events
+                // Primary signal: actual sub-features from custom event names
+                if (_userSubFeatureMap && userId && _userSubFeatureMap[userId]) {
+                    const subs = _userSubFeatureMap[userId];
+                    if (subs instanceof Set) return [...subs];
+                    if (Array.isArray(subs) && subs.length) return subs;
+                }
+
+                // Secondary signal: module-level events (fallback to all subs in module)
                 if (_featureUserMap && userId && _featureUserMap[userId]) {
-                    const visitedModules = _featureUserMap[userId]; // e.g. ['Workspace','Compliance']
+                    const visitedModules = _featureUserMap[userId];
                     const feats = [];
                     for (const mod of visitedModules) {
                         const subs = MODULE_TO_SUBS[mod];
@@ -1826,19 +1845,48 @@
                     return false;
                 }
 
-                // Rebuild feature-user map filtered to selected time period
+                // Rebuild feature-user map and sub-feature counts from actual events
                 _featureUserMap = {};
+                _userSubFeatureMap = {};
+                const _subFeatureCounts = {};   // sub-feature → event count
+                const _subFeatureUsers = {};    // sub-feature → Set of user IDs
+                const _acctSubFeatureCounts = {}; // accountId → { sub → event count }
+                // Build a userId → accountId lookup from raw users
+                const _userAcctMap = {};
+                (raw.users || []).forEach(u => {
+                    const uid = u.identifyId || u.id;
+                    if (uid) _userAcctMap[uid] = u.accountId;
+                });
+
                 for (const evt of _featureEvents) {
                     if (evt.d < cutoffMs) continue; // skip events outside time window
                     if (isExcludedUser(evt.u)) continue; // skip internal/excluded users
+                    // Module-level map (for user filtering)
                     if (!_featureUserMap[evt.u]) _featureUserMap[evt.u] = new Set();
                     _featureUserMap[evt.u].add(evt.m);
+                    // Sub-feature counts from actual event name
+                    const sub = PAGE_TO_SUB[evt.e] || null;
+                    if (sub) {
+                        _subFeatureCounts[sub] = (_subFeatureCounts[sub] || 0) + 1;
+                        if (!_subFeatureUsers[sub]) _subFeatureUsers[sub] = new Set();
+                        _subFeatureUsers[sub].add(evt.u);
+                        // Per-user sub-feature tracking
+                        if (!_userSubFeatureMap[evt.u]) _userSubFeatureMap[evt.u] = new Set();
+                        _userSubFeatureMap[evt.u].add(sub);
+                        // Per-account sub-feature counts
+                        const acctId = _userAcctMap[evt.u];
+                        if (acctId) {
+                            if (!_acctSubFeatureCounts[acctId]) _acctSubFeatureCounts[acctId] = {};
+                            _acctSubFeatureCounts[acctId][sub] = (_acctSubFeatureCounts[acctId][sub] || 0) + 1;
+                        }
+                    }
                 }
                 // Convert Sets to arrays
                 for (const uid of Object.keys(_featureUserMap)) {
                     _featureUserMap[uid] = [..._featureUserMap[uid]];
                 }
                 console.log(`[GS] Feature map for ${timePeriodMonths}mo: ${Object.keys(_featureUserMap).length} users with visits`);
+                console.log(`[GS] Sub-feature counts:`, JSON.stringify(_subFeatureCounts));
 
                 const allExternalUsers = (raw.users || []).map(u => {
                     // Normalize field names: Gainsight PX returns firstName/lastName, not name
@@ -1937,6 +1985,10 @@
                     allUsers: users,
                     timePeriodMonths,
                     trendData,
+                    subFeatureCounts: _subFeatureCounts,
+                    subFeatureUsers: Object.fromEntries(Object.entries(_subFeatureUsers).map(([k,v]) => [k, v.size])),
+                    acctSubFeatureCounts: _acctSubFeatureCounts,
+                    acctNameById,
                 };
             }
 
@@ -2035,25 +2087,16 @@
                 }
 
                 // === Feature Usage: compute sub-feature and top-feature aggregates ===
-                const subFeatureMap = {};  // sub-feature → total events
-                const acctSubFeatures = {}; // account → { sub → events }
-                data.allUsers.forEach(u => {
-                    const subs = inferFeatures(u);
-                    subs.forEach(s => {
-                        subFeatureMap[s] = (subFeatureMap[s] || 0) + (u.totalEvents || 1);
-                    });
-                });
+                // === Feature Usage: use real event-level sub-feature counts ===
+                const subFeatureMap = data.subFeatureCounts || {};
+                const acctSubFeatures = {};
+                // Build account sub-feature map from real event data
                 data.allAccounts.forEach(a => {
-                    const feats = {};
-                    (a.users || []).forEach(u => {
-                        inferFeatures(u).forEach(s => {
-                            feats[s] = (feats[s] || 0) + (u.totalEvents || 1);
-                        });
-                    });
-                    acctSubFeatures[a.name] = feats;
+                    const counts = data.acctSubFeatureCounts?.[a.id] || {};
+                    acctSubFeatures[a.name] = counts;
                 });
 
-                // Aggregate to top-level
+                // Aggregate to top-level from real sub-feature counts
                 const topFeatureMap = {};
                 TOP_FEATURES.forEach(tf => { topFeatureMap[tf] = 0; });
                 Object.entries(subFeatureMap).forEach(([sub, val]) => {

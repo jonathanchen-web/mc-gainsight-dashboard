@@ -86,7 +86,7 @@ async function fetchCustomPageViewEvents(maxPages = 15) {
     for (const evt of items) {
       const module = EVENT_TO_MODULE[evt.eventName];
       if (module && evt.identifyId) {
-        events.push({ u: evt.identifyId, m: module, d: evt.date });
+        events.push({ u: evt.identifyId, m: module, e: evt.eventName, d: evt.date });
       }
     }
 
