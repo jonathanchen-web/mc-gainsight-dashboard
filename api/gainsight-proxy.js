@@ -1,18 +1,35 @@
 // Vercel serverless function — Gainsight PX API proxy with server-side caching
-// Fetches users, accounts, features, and feature_match events
-// Builds a per-user feature usage map from actual page visit data
+// Fetches users, accounts, and custom "View Page" events for feature usage tracking
 
 const API_KEY = process.env.GAINSIGHT_PX_API_KEY;
 const BASE_URL = 'https://api.aptrinsic.com/v1';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Top-level module IDs in Gainsight PX (direct children of app.manifestclimate.com)
-const TOP_MODULES = {
-  'dcac118f-d496-45e1-b612-ae9c276463ba': 'Workspace',
-  'e8f9b98a-3835-44c9-9811-b4b505c5c779': 'Tracker',
-  'a2a00aa0-653a-41c5-81fc-ca205f88925b': 'Compliance',
-  '691a246d-6f29-402d-a378-c7ea57bee303': 'Resources',
-  '1ce3e609-b39e-4af9-8848-8ee19575488d': 'Homepage',
+// Map custom event names to top-level product modules
+// These are "View Page - *" events fired by the Manifest Climate app
+const EVENT_TO_MODULE = {
+  // Workspace
+  'View Page - Workspace V2': 'Workspace',
+  'View Page - Climate Profile': 'Workspace',
+  'View Page - Climate Actions': 'Workspace',
+  'View Page - Disclosure Index': 'Workspace',
+  'View Page - Profile': 'Workspace',
+  // Compliance
+  'View Page - All Disclosures': 'Compliance',
+  'View Page - Disclosure Details': 'Compliance',
+  'View Page - Select Standard(s)': 'Compliance',
+  'View Page - Summary': 'Compliance',
+  'View Page - Disclosure Search': 'Compliance',
+  'View Page - Comparison View': 'Compliance',
+  'View Page - Compliance Summary': 'Compliance',
+  // Tracker
+  'View Page - Tracker Data View': 'Tracker',
+  'View Page - Tracker Dashboard': 'Tracker',
+  'View Page - Details Data': 'Tracker',
+  'View Page - Details Your References': 'Tracker',
+  'View Page - Details Notes': 'Tracker',
+  // Homepage
+  'View Page - Home': 'Homepage',
 };
 
 let cache = null;
@@ -48,92 +65,52 @@ async function fetchAll(endpoint, key, maxPages = 10) {
   return all;
 }
 
-// Fetch feature_match events (uses scrollId pagination)
-// No date params — the endpoint returns all available events by default
-async function fetchFeatureMatchEvents(maxPages = 20) {
-  const all = [];
+// Fetch custom events and extract "View Page" events mapped to modules
+// Uses scrollId pagination; default 30-day window from the API
+async function fetchPageViewEvents(maxPages = 15) {
+  const events = [];
   let scrollId = null;
+  let totalRaw = 0;
+  let unmapped = 0;
+  const unmappedNames = new Set();
 
   for (let page = 0; page < maxPages; page++) {
     const url = scrollId
-      ? `${BASE_URL}/events/feature_match?scrollId=${encodeURIComponent(scrollId)}`
-      : `${BASE_URL}/events/feature_match?pageSize=200`;
+      ? `${BASE_URL}/events/custom?scrollId=${encodeURIComponent(scrollId)}`
+      : `${BASE_URL}/events/custom?pageSize=1000`;
 
     const res = await fetch(url, {
       headers: { 'X-APTRINSIC-API-KEY': API_KEY },
     });
 
     if (!res.ok) {
-      console.error(`feature_match returned ${res.status}`);
+      console.error(`custom events returned ${res.status}`);
       break;
     }
 
     const data = await res.json();
-    const items = data.featureMatchEvents || [];
-    all.push(...items);
+    const items = data.customEvents || [];
+    totalRaw += items.length;
+
+    // Only keep "View Page" events that map to a known module
+    for (const evt of items) {
+      const module = EVENT_TO_MODULE[evt.eventName];
+      if (module && evt.identifyId) {
+        events.push({ u: evt.identifyId, m: module, d: evt.date });
+      } else if (evt.eventName && evt.eventName.startsWith('View Page') && !EVENT_TO_MODULE[evt.eventName]) {
+        unmapped++;
+        unmappedNames.add(evt.eventName);
+      }
+    }
 
     if (items.length === 0 || !data.scrollId) break;
     scrollId = data.scrollId;
     await sleep(250);
   }
 
-  console.log(`[proxy] feature_match: fetched ${all.length} raw events`);
-  return all;
-}
-
-// Build a lookup: featureId → top-level module name
-// Walks up the parentFeatureId chain to find which top module each feature belongs to
-function buildFeatureToModuleMap(features) {
-  const byId = {};
-  for (const f of features) {
-    byId[f.id] = f;
-  }
-
-  const featureToModule = {};
-
-  function findTopModule(featureId, visited = new Set()) {
-    if (featureToModule[featureId]) return featureToModule[featureId];
-    if (TOP_MODULES[featureId]) return TOP_MODULES[featureId];
-    if (visited.has(featureId)) return null; // cycle guard
-    visited.add(featureId);
-
-    const feat = byId[featureId];
-    if (!feat) return null;
-
-    const parentId = feat.parentFeatureId;
-    if (!parentId) return null;
-    if (TOP_MODULES[parentId]) return TOP_MODULES[parentId];
-
-    const result = findTopModule(parentId, visited);
-    if (result) featureToModule[featureId] = result;
-    return result;
-  }
-
-  for (const f of features) {
-    const mod = findTopModule(f.id);
-    if (mod) featureToModule[f.id] = mod;
-  }
-
-  return featureToModule;
-}
-
-// Convert raw feature_match events into compact format for the frontend:
-// [{u: identifyId, m: moduleName, d: dateMs}, ...]
-// This lets the frontend filter by time period dynamically
-function compactFeatureEvents(featureMatchEvents, featureToModule) {
-  const events = [];
-  let noUser = 0;
-  let noModule = 0;
-  const unmappedFeatures = new Set();
-  for (const evt of featureMatchEvents) {
-    if (!evt.identifyId) { noUser++; continue; }
-    const module = featureToModule[evt.featureId];
-    if (!module) { noModule++; unmappedFeatures.add(evt.featureId); continue; }
-    events.push({ u: evt.identifyId, m: module, d: evt.date });
-  }
-  console.log(`[proxy] compactFeatureEvents: ${events.length} mapped, ${noUser} skipped (no user), ${noModule} skipped (no module mapping for ${unmappedFeatures.size} unique features)`);
-  if (unmappedFeatures.size > 0) {
-    console.log(`[proxy] Unmapped feature IDs: ${[...unmappedFeatures].slice(0, 10).join(', ')}${unmappedFeatures.size > 10 ? '...' : ''}`);
+  console.log(`[proxy] Custom events: ${totalRaw} raw, ${events.length} mapped page views`);
+  if (unmappedNames.size > 0) {
+    console.log(`[proxy] Unmapped View Page events (${unmapped}): ${[...unmappedNames].join(', ')}`);
   }
   return events;
 }
@@ -174,39 +151,17 @@ export default async function handler(req, res) {
     const accounts = await fetchAll('accounts', 'accounts');
     await sleep(300);
 
-    // 3. Fetch features (paginated) for hierarchy mapping
-    const featuresRes1 = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=0`, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
-    const fd1 = featuresRes1.ok ? await featuresRes1.json() : { features: [], isLastPage: true };
-    const features = fd1.features || [];
-    if (!fd1.isLastPage) {
-      await sleep(250);
-      const featuresRes2 = await fetch(`${BASE_URL}/feature?pageSize=200&pageNumber=1`, {
-        headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-      });
-      if (featuresRes2.ok) {
-        const fd2 = await featuresRes2.json();
-        features.push(...(fd2.features || []));
-      }
-    }
-    console.log(`[proxy] Fetched ${features.length} features for hierarchy mapping`);
-
-    // 4. Build featureId → top-level module lookup
-    const featureToModule = buildFeatureToModuleMap(features);
-    await sleep(300);
-
-    // 5. Fetch feature_match events
-    const featureMatchEvents = await fetchFeatureMatchEvents(20);
-
-    // 6. Compact events: [{u: userId, m: module, d: dateMs}, ...]
-    const featureEvents = compactFeatureEvents(featureMatchEvents, featureToModule);
+    // 3. Fetch custom "View Page" events mapped to modules
+    const featureEvents = await fetchPageViewEvents(15);
 
     // Count events per module for debugging
     const moduleCounts = {};
+    const uniqueUsers = new Set();
     for (const evt of featureEvents) {
       moduleCounts[evt.m] = (moduleCounts[evt.m] || 0) + 1;
+      uniqueUsers.add(evt.u);
     }
+    console.log(`[proxy] Module counts: ${JSON.stringify(moduleCounts)}, unique users: ${uniqueUsers.size}`);
 
     cache = { users, accounts, featureEvents };
     cacheTime = Date.now();
@@ -219,7 +174,7 @@ export default async function handler(req, res) {
       fetchedAt: cacheTime,
       cacheAgeMin: 0,
       nextRefreshMin: 60,
-      _debug: { rawEvents: featureMatchEvents.length, mappedEvents: featureEvents.length, features: features.length, moduleCounts },
+      _debug: { mappedEvents: featureEvents.length, uniqueUsers: uniqueUsers.size, moduleCounts },
     });
   } catch (err) {
     if (cache) {
