@@ -1683,8 +1683,8 @@
 
             async function fetchData(forceRefresh) {
                 const url = forceRefresh
-                    ? '/.netlify/functions/gainsight-proxy?refresh=true'
-                    : '/.netlify/functions/gainsight-proxy';
+                    ? '/api/gainsight-proxy?refresh=true'
+                    : '/api/gainsight-proxy';
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`API error ${res.status}`);
                 return res.json();
@@ -3162,4 +3162,3 @@
     </script>
 </body>
 </html>
-<!-- deploy trigger -->
