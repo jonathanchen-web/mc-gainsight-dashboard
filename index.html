@@ -1120,6 +1120,7 @@
                         <option value="6">Last 6 months</option>
                         <option value="3">Last 3 months</option>
                         <option value="1">Last month</option>
+                        <option value="0">This month</option>
                     </select>
 
                     <label>Features:</label>
@@ -1801,8 +1802,18 @@
                 timePeriodMonths = timePeriodMonths || 6;
                 featureFilter = featureFilter || CORE_FEATURES;
 
-                const cutoffDate = new Date();
-                cutoffDate.setMonth(cutoffDate.getMonth() - timePeriodMonths);
+                // Use calendar month boundaries to match Gainsight PX's definition
+                // "Last month" = previous calendar month, "Last 3 months" = 3 calendar months back, etc.
+                // "This month" (value 0) = start of current month
+                const now = new Date();
+                let cutoffDate;
+                if (timePeriodMonths === 0) {
+                    // This month: from 1st of current month
+                    cutoffDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                } else {
+                    // Last N months: from 1st of the month, N months ago
+                    cutoffDate = new Date(now.getFullYear(), now.getMonth() - timePeriodMonths, 1);
+                }
                 const cutoffMs = cutoffDate.getTime();
 
                 // Helper: check if a userId (identifyId / email) should be excluded
@@ -1829,7 +1840,7 @@
                 }
                 console.log(`[GS] Feature map for ${timePeriodMonths}mo: ${Object.keys(_featureUserMap).length} users with visits`);
 
-                let users = (raw.users || []).map(u => {
+                const allExternalUsers = (raw.users || []).map(u => {
                     // Normalize field names: Gainsight PX returns firstName/lastName, not name
                     if (!u.name && (u.firstName || u.lastName)) {
                         u.name = [u.firstName, u.lastName].filter(Boolean).join(' ');
@@ -1844,6 +1855,11 @@
                     const domain = email.split('@')[1] || '';
                     if (EXCLUDE_DOMAINS.some(d => domain.includes(d))) return false;
                     if (EXCLUDE_EMAILS.includes(email)) return false;
+                    return true;
+                });
+
+                // Apply time period and feature filters for active users
+                let users = allExternalUsers.filter(u => {
                     // Time period filter — only use lastSeenDate (actual visit timestamp)
                     const lastSeen = u.lastSeenDate || 0;
                     const lastSeenMs = typeof lastSeen === 'number' ? lastSeen : new Date(lastSeen).getTime();
@@ -1916,7 +1932,7 @@
                     topUser: topUser,
                     activeUsers,
                     activeAccounts,
-                    totalUsers: users.length,
+                    totalUsers: allExternalUsers.length,
                     allAccounts: accounts,
                     allUsers: users,
                     timePeriodMonths,
@@ -1932,7 +1948,7 @@
                 document.getElementById('gs-kpi-top-user').textContent = data.topUser.name || '—';
                 document.getElementById('gs-kpi-top-user-company').textContent = data.topUser.accountName || '—';
 
-                const periodLabel = data.timePeriodMonths === 1 ? 'Last Month' : `Last ${data.timePeriodMonths}mo`;
+                const periodLabel = data.timePeriodMonths === 0 ? 'This Month' : data.timePeriodMonths === 1 ? 'Last Month' : `Last ${data.timePeriodMonths}mo`;
                 document.getElementById('gs-kpi-maa').textContent = data.activeAccounts;
                 document.getElementById('gs-kpi-maa-detail').textContent = `of ${data.allAccounts.length} total (${periodLabel})`;
 
