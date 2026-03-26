@@ -1773,7 +1773,18 @@
                     return true;
                 });
 
-                let accounts = (raw.accounts || []).filter(a => {
+                let accounts = (raw.accounts || []).map(a => {
+                    // Normalize sector: PX stores it in customAttributes.sector or top-level industry
+                    if (!a.sector) {
+                        const ca = a.customAttributes || {};
+                        a.sector = ca.sector || a.industry || '—';
+                        // Capitalize first letter
+                        if (a.sector && a.sector !== '—') {
+                            a.sector = a.sector.charAt(0).toUpperCase() + a.sector.slice(1);
+                        }
+                    }
+                    return a;
+                }).filter(a => {
                     if (EXCLUDE_ACCT_NAMES.some(n => a.name.toLowerCase().includes(n.toLowerCase()))) return false;
                     // HubSpot exclusion filter
                     if (_excludedNames.size > 0 && _excludedNames.has(a.name.toLowerCase().trim())) return false;
