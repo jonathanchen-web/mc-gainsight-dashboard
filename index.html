@@ -1403,6 +1403,23 @@
                             <button id="dp-clearBtn2" class="dp-action-btn dp-action-btn-danger"><i class="ph ph-trash"></i> Clear Data</button>
                         </div>
                     </div>
+                    <div class="dp-filter-bar">
+                        <select id="dp-filterOrgType" aria-label="Filter by org type">
+                            <option value="">All Orgs</option>
+                            <option value="external">External</option>
+                            <option value="internal">Internal</option>
+                        </select>
+                        <div class="dp-toggle-group">
+                            <button class="dp-toggle-btn active" data-period="weekly">Weekly</button>
+                            <button class="dp-toggle-btn" data-period="monthly">Monthly</button>
+                        </div>
+                        <select id="dp-filterRange" aria-label="Filter by date range">
+                            <option value="all">All Time</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                        </select>
+                    </div>
+
                     <div class="dp-kpi-grid">
                         <div class="dp-kpi-card used">
                             <div class="dp-kpi-label">Used This Week</div>
@@ -1424,23 +1441,6 @@
                             <div class="dp-kpi-value" id="dp-kpi-added-month">0</div>
                             <div class="dp-breakdown" id="dp-breakdown-added-month"></div>
                         </div>
-                    </div>
-
-                    <div class="dp-filter-bar">
-                        <select id="dp-filterOrgType" aria-label="Filter by org type">
-                            <option value="">All Orgs</option>
-                            <option value="external">External</option>
-                            <option value="internal">Internal</option>
-                        </select>
-                        <div class="dp-toggle-group">
-                            <button class="dp-toggle-btn active" data-period="weekly">Weekly</button>
-                            <button class="dp-toggle-btn" data-period="monthly">Monthly</button>
-                        </div>
-                        <select id="dp-filterRange" aria-label="Filter by date range">
-                            <option value="all">All Time</option>
-                            <option value="30d">Last 30 Days</option>
-                            <option value="90d">Last 90 Days</option>
-                        </select>
                     </div>
 
                     <div class="dp-charts-grid">
@@ -3091,14 +3091,36 @@
                 return new Date(y, m - 1).toLocaleString('en', { month: 'short', year: 'numeric' });
             }
 
+            function getFilteredRows() {
+                const orgType = document.getElementById('dp-filterOrgType')?.value || '';
+                const range = document.getElementById('dp-filterRange')?.value || 'all';
+
+                let cutoff = '';
+                if (range === '30d') {
+                    const d = new Date(); d.setDate(d.getDate() - 30);
+                    cutoff = d.toISOString().split('T')[0];
+                } else if (range === '90d') {
+                    const d = new Date(); d.setDate(d.getDate() - 90);
+                    cutoff = d.toISOString().split('T')[0];
+                }
+
+                return _rawRows.filter(row => {
+                    if (orgType === 'external' && !row.external) return false;
+                    if (orgType === 'internal' && row.external) return false;
+                    if (cutoff && row.date < cutoff) return false;
+                    return true;
+                });
+            }
+
             function processData() {
+                const rows = getFilteredRows();
                 const weekly = {};
                 const monthly = {};
                 const addedWeekly = {};
                 const addedMonthly = {};
                 const byOrg = {};
 
-                _rawRows.forEach(row => {
+                rows.forEach(row => {
                     const date = row.date;
                     const org = row.org;
                     const ext = row.external ? 1 : 0;
@@ -3164,10 +3186,20 @@
                 const periods = period === 'weekly' ? _processed.weekly : _processed.monthly;
                 if (periods.length === 0) return { paid: 0, unpaid: 0 };
 
-                const lastPeriod = periods[periods.length - 1];
-                const total = lastPeriod.value;
-                const paid = total;
-                return { paid, unpaid: total - paid };
+                const lastPeriodKey = periods[periods.length - 1].key;
+                const bucketKey = period === 'weekly' ? 'weeks' : 'months';
+
+                let paid = 0;
+                let unpaid = 0;
+                _processed.byOrg.forEach(org => {
+                    const val = org[bucketKey][lastPeriodKey] || 0;
+                    if (_paidState[org.name]) {
+                        paid += val;
+                    } else {
+                        unpaid += val;
+                    }
+                });
+                return { paid, unpaid };
             }
 
             function breakdownHTML(breakdown) {
@@ -3314,10 +3346,15 @@
             function onPaidToggle(checkbox) {
                 const org = checkbox.getAttribute('data-org');
                 _paidState[org] = checkbox.checked;
+                renderKPIs();
             }
 
             function applyFilters() {
+                processData();
+                const period = document.querySelector('.dp-toggle-btn.active')?.getAttribute('data-period') || 'weekly';
+                renderKPIs();
                 renderOrgTable();
+                redrawCharts(period);
             }
 
             function renderDashboard() {
@@ -3445,6 +3482,9 @@
                         setChartPeriod(btn.getAttribute('data-period'));
                     });
                 });
+
+                document.getElementById('dp-filterOrgType')?.addEventListener('change', applyFilters);
+                document.getElementById('dp-filterRange')?.addEventListener('change', applyFilters);
 
                 const saved = localStorage.getItem('dp_data');
                 if (saved) {
