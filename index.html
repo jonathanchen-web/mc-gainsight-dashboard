@@ -1754,12 +1754,21 @@
             }
 
             async function fetchData(forceRefresh) {
-                const url = forceRefresh
-                    ? '/api/gainsight-proxy?refresh=true'
-                    : '/api/gainsight-proxy';
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`API error ${res.status}`);
-                const data = await res.json();
+                let data;
+                // Use prefetched data from parallel load if available (first load only)
+                if (!forceRefresh && window._prefetchDataPromise) {
+                    const prefetched = await window._prefetchDataPromise;
+                    window._prefetchDataPromise = null; // consume once
+                    if (prefetched) { data = prefetched; }
+                }
+                if (!data) {
+                    const url = forceRefresh
+                        ? '/api/gainsight-proxy?refresh=true'
+                        : '/api/gainsight-proxy';
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`API error ${res.status}`);
+                    data = await res.json();
+                }
 
                 // Store raw feature events for time-period-aware filtering
                 if (data.featureEvents && data.featureEvents.length > 0) {
@@ -3411,6 +3420,9 @@
         })();
 
         // Auth gate — check session before showing dashboard
+        // Fire auth check AND data prefetch in parallel to avoid sequential cold starts
+        window._prefetchDataPromise = fetch('/api/gainsight-proxy').then(r => r.ok ? r.json() : Promise.reject(r.status)).catch(e => { console.warn('Prefetch failed:', e); return null; });
+
         (async function checkAuth() {
             const authScreen = document.getElementById('auth-screen');
             const appShell = document.getElementById('app-shell');
