@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Help-FAQ Issue Tracker Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-hover: #253449;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #34d399;
+    --red: #f87171;
+    --orange: #fb923c;
+    --purple: #a78bfa;
+    --pink: #f472b6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { padding: 24px 32px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .header h1 { font-size: 24px; font-weight: 700; }
+  .header h1 span { color: var(--accent); }
+  .header-meta { color: var(--text-muted); font-size: 14px; }
+
+  .controls { padding: 16px 32px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border); }
+  .controls label { font-size: 13px; color: var(--text-muted); margin-right: 4px; }
+  .controls select, .controls input { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+  .controls select:focus, .controls input:focus { outline: none; border-color: var(--accent); }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 24px 32px; }
+  .kpi { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+  .kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+  .kpi-value { font-size: 32px; font-weight: 700; }
+  .kpi-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.red { color: var(--red); }
+  .kpi-value.accent { color: var(--accent); }
+  .kpi-value.orange { color: var(--orange); }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 32px 24px; }
+  .chart-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+  .chart-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-muted); }
+  .chart-container { position: relative; height: 280px; }
+
+  .table-section { padding: 0 32px 32px; }
+  .table-section h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .table-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .table-tab { background: var(--card); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+  .table-tab:hover { background: var(--card-hover); }
+  .table-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+
+  .issues-table { width: 100%; border-collapse: collapse; }
+  .issues-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); padding: 10px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); cursor: pointer; }
+  .issues-table th:hover { color: var(--accent); }
+  .issues-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+  .issues-table tr:hover td { background: var(--card-hover); }
+  .issues-table-wrap { background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: auto; max-height: 500px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 50px; font-size: 11px; font-weight: 600; }
+  .badge-open { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .badge-closed { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+  .badge-feature { background: rgba(56, 189, 248, 0.1); color: var(--accent); }
+  .badge-new { background: rgba(251, 146, 60, 0.2); color: var(--orange); animation: pulse 2s ease-in-out infinite; font-size: 10px; padding: 2px 8px; margin-left: 6px; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .slack-link { color: var(--accent); text-decoration: none; font-size: 13px; opacity: 0.7; transition: opacity 0.15s; }
+  .slack-link:hover { opacity: 1; text-decoration: underline; }
+
+  .priority-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .priority-high { background: var(--red); }
+  .priority-medium { background: var(--orange); }
+  .priority-low { background: var(--green); }
+
+  .footer { padding: 16px 32px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 12px; }
+
+  @media (max-width: 900px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>#help-faq <span>Issue Tracker</span></h1>
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <button id="markAllReadBtn" onclick="markAllSeen(ISSUES)" style="display:none; background: var(--orange); color: var(--bg); border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">Mark all read</button>
+    <div class="header-meta" id="lastUpdated">Last updated: Loading...</div>
+  </div>
+</div>
+
+<div class="controls">
+  <label for="filterFeature">Feature:</label>
+  <select id="filterFeature"><option value="all">All Features</option></select>
+  <label for="filterStatus">Status:</label>
+  <select id="filterStatus">
+    <option value="all">All</option>
+    <option value="Open">Open</option>
+    <option value="Closed">Closed</option>
+  </select>
+  <label for="filterPriority">Priority:</label>
+  <select id="filterPriority">
+    <option value="all">All</option>
+    <option value="High">High</option>
+    <option value="Medium">Medium</option>
+    <option value="Low">Low</option>
+  </select>
+  <label for="filterSearch">Search:</label>
+  <input type="text" id="filterSearch" placeholder="Search issues..." style="min-width: 200px;">
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+<div class="charts-row">
+  <div class="chart-card">
+    <h3>Issues by Feature</h3>
+    <div class="chart-container"><canvas id="chartByFeature"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h3>Resolution Rate by Feature</h3>
+    <div class="chart-container"><canvas id="chartResolution"></canvas></div>
+  </div>
+</div>
+<div class="charts-row">
+  <div class="chart-card">
+    <h3>Issues Over Time (Monthly)</h3>
+    <div class="chart-container"><canvas id="chartTimeline"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h3>Top Reporters</h3>
+    <div class="chart-container"><canvas id="chartReporters"></canvas></div>
+  </div>
+</div>
+
+<div class="table-section">
+  <h3>Issue Log</h3>
+  <div class="table-tabs">
+    <div class="table-tab active" data-filter="all" onclick="setTableTab(this)">All Issues</div>
+    <div class="table-tab" data-filter="Open" onclick="setTableTab(this)">Open</div>
+    <div class="table-tab" data-filter="Closed" onclick="setTableTab(this)">Closed</div>
+  </div>
+  <div class="issues-table-wrap">
+    <table class="issues-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('date')">Date &#x25B4;&#x25BE;</th>
+          <th onclick="sortTable('title')">Issue &#x25B4;&#x25BE;</th>
+          <th onclick="sortTable('feature')">Feature &#x25B4;&#x25BE;</th>
+          <th onclick="sortTable('reporter')">Reporter &#x25B4;&#x25BE;</th>
+          <th onclick="sortTable('priority')">Priority &#x25B4;&#x25BE;</th>
+          <th onclick="sortTable('status')">Status &#x25B4;&#x25BE;</th>
+          <th>Resolution</th>
+          <th>Slack</th>
+        </tr>
+      </thead>
+      <tbody id="issueTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">
+  Help-FAQ Issue Tracker &middot; Data extracted from #help-faq Slack channel &middot; Manifest Climate
+</div>
+
+<script>
+// ========== ISSUE DATA ==========
+const ISSUES = [
+  {
+    id: 1, date: "2026-03-17", title: "PDF Viewer not working in Microsoft Edge",
+    description: "FINMA prospect unable to view PDFs when clicking links in the platform using Microsoft Edge browser.",
+    feature: "PDF Viewer", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Adobe Embed API blocked by company security settings. Workaround provided; alternative PDF method planned for future release.",
+    client: "FINMA", addedOn: "2026-03-24", threadTs: "1773759688.347879"
+  },
+  {
+    id: 2, date: "2026-03-17", title: "Comparison View not showing selected companies",
+    description: "Selecting multiple companies in dropdown but platform does not show the selected companies. Recurring issue reported multiple times.",
+    feature: "Comparison View", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Intermittent bug reproduced and patched into production on Mar 18, 2026.",
+    client: "FINMA", addedOn: "2026-03-24", threadTs: "1773759688.347879"
+  },
+  {
+    id: 3, date: "2026-03-17", title: "Scope 3 emissions showing 'not found' despite data existing",
+    description: "PostFinance run: AI stating gross Scope 3 emission value as 'not found' when figures exist on page 67 of sustainability report.",
+    feature: "AI/Methodology", reporter: "Jeff Horlor", priority: "Medium", status: "Open",
+    resolution: "Under discussion — prompt change considered but model is assessing something specific.",
+    client: "FINMA", addedOn: "2026-03-24", threadTs: "1773759688.347879"
+  },
+  {
+    id: 4, date: "2026-03-17", title: "Page numbers not matching actual PDF pages",
+    description: "Page tagging bug where page numbers in results don't match the actual pages in documents.",
+    feature: "Compliance UI", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Page index +1 bug fixed and deployed to production on Mar 23, 2026.",
+    client: "FINMA", addedOn: "2026-03-24", threadTs: "1773759688.347879"
+  },
+  {
+    id: 5, date: "2026-03-17", title: "Assessments not completing full 77 datapoints",
+    description: "Graubündner Kantonalbank TCFD v2 and v3 assessments keep running into issues and not completing.",
+    feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Fixed after investigation by engineering team. Duplicate assessment also resolved.",
+    client: "FINMA", addedOn: "2026-03-24", threadTs: "1773759688.347879"
+  },
+  {
+    id: 6, date: "2026-03-12", title: "Assessment stuck after failing to assess some requirements",
+    description: "Assessment kicked off for FINMA prospect seems stuck after failing to assess some requirements.",
+    feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Fixed — both original and duplicate assessments completed successfully.",
+    client: "FINMA", addedOn: "2026-03-24", threadTs: "1773336761.830639"
+  },
+  {
+    id: 7, date: "2026-02-26", title: "Assessment stuck in 'Processing Documents' for 20+ hours",
+    description: "Assessment on one document stuck showing 'Processing Documents' since previous day. Also happening in another trial account.",
+    feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Open",
+    resolution: "Engineering stopped duplicate runs and is debugging. Monitoring improvements requested.",
+    client: "Prospect trial", addedOn: "2026-03-24", threadTs: "1772114866.303929"
+  },
+  {
+    id: 8, date: "2026-02-13", title: "How to set up login for Agent POC",
+    description: "Question about whether users can self-register for Agent POC or need to be set up in Union first.",
+    feature: "Login/Auth", reporter: "Jeff Horlor", priority: "Low", status: "Closed",
+    resolution: "Answered in thread — clarification provided on login setup process.",
+    client: "Internal", addedOn: "2026-03-24", threadTs: "1771015065.324049"
+  },
+  {
+    id: 9, date: "2026-02-09", title: "Blocked from logging into the product",
+    description: "Error code preventing login to the product.",
+    feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "Medium", status: "Closed",
+    resolution: "Resolved within 1.5 hours.",
+    client: "Internal", addedOn: "2026-03-24", threadTs: "1770657137.166639"
+  },
+  {
+    id: 10, date: "2026-02-04", title: "Agent backend down — cannot log in",
+    description: "Agent not accessible, backend server down due to AWS resource exhaustion on undersized t3.micro instance.",
+    feature: "Agent", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Machine spec upgraded from t3.micro POC to production-grade instance. Service restored.",
+    client: "Multiple users", addedOn: "2026-03-24", threadTs: "1770229656.766969"
+  },
+  {
+    id: 11, date: "2026-02-03", title: "Assessments sitting in queue for hours",
+    description: "Two assessments in queue for several hours, significantly longer than normal. Prospect demo urgency.",
+    feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Assessments completed. 77 datapoints confirmed saved to DB.",
+    client: "Prospect demo", addedOn: "2026-03-24", threadTs: "1770154551.147539"
+  },
+  {
+    id: 12, date: "2026-01-30", title: "Assessments queued mid-day still not finalized by evening",
+    description: "Assessments with ~77 datapoints each queued mid-day not completing in expected timeframe.",
+    feature: "Assessment Processing", reporter: "Alex Konson", priority: "Medium", status: "Closed",
+    resolution: "Completed by next business day. Non-urgent FYI.",
+    client: "Internal", addedOn: "2026-03-24", threadTs: "1769816855.621179"
+  },
+  {
+    id: 13, date: "2026-01-29", title: "TCFD documents showing as 'CSDS' in platform",
+    description: "Incorrect naming — TCFD document links displaying as 'CSDS' instead of correct standard name.",
+    feature: "Compliance UI", reporter: "Jeff Horlor", priority: "Medium", status: "Closed",
+    resolution: "Hard-coded names updated in production on Jan 30. Correct naming confirmed: TCFD, IFRS S2, ESRS.",
+    client: "All users", addedOn: "2026-03-24", threadTs: "1769736836.237369"
+  },
+  {
+    id: 14, date: "2026-01-16", title: "Demo assessment stuck on 'Processing Documents' for 1+ hour",
+    description: "Fidelity demo assessment stuck on Processing Documents step with upcoming 10am demo.",
+    feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "Resolved before demo time.",
+    client: "Fidelity (demo)", addedOn: "2026-03-24", threadTs: "1768572631.048159"
+  },
+  {
+    id: 15, date: "2025-12-11", title: "CSRD datapoints stuck in queue — payload too big for Databricks",
+    description: "Client assessment partially ran but CSRD datapoints stuck for a day. Payload exceeds Databricks character limit.",
+    feature: "Assessment Processing", reporter: "Adam Rochwerg", priority: "High", status: "Closed",
+    resolution: "Bug identified (Databricks payload size limit). Manually run for client. Fix discussed with engineering.",
+    client: "Mantle Climate", addedOn: "2026-03-24", threadTs: "1765483213.957329"
+  },
+  {
+    id: 16, date: "2025-12-08", title: "CSRD section labels changed from 'E1 - Climate Change' to just 'E1'",
+    description: "Labels in platform lost descriptive names, making navigation harder for users unfamiliar with regulation codes.",
+    feature: "Compliance UI", reporter: "Adam Rochwerg", priority: "Medium", status: "Open",
+    resolution: "Deferred to pre-irtable migration. Labels reflect methodology sheet directly.",
+    client: "All users", addedOn: "2026-03-24", threadTs: "1765222518.514899"
+  },
+  {
+    id: 17, date: "2025-11-05", title: "Agent keeps disconnecting during output generation",
+    description: "Agent disconnects periodically when generating outputs, even for simple questions.",
+    feature: "Agent", reporter: "Jeff Horlor", priority: "Medium", status: "Open",
+    resolution: "Acknowledged as Beta limitation.",
+    client: "Internal", addedOn: "2026-03-24", threadTs: "1762359808.120559"
+  },
+  {
+    id: 18, date: "2025-11-04", title: "Website, agent, and email all down",
+    description: "GoDaddy hosting problem causing website, agent, and email services to all go down simultaneously.",
+    feature: "Infrastructure", reporter: "Jeff Horlor", priority: "High", status: "Closed",
+    resolution: "GoDaddy hosting issue fixed by Muchen. Services restored.",
+    client: "Company-wide", addedOn: "2026-03-24", threadTs: "1762265148.057689"
+  },
+  {
+    id: 19, date: "2025-10-23", title: "Client not receiving verification code for login",
+    description: "ReTech (Oaktree) user unable to receive verification code during registration, preventing platform access.",
+    feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "High", status: "Closed",
+    resolution: "User eventually got in after multiple attempts and support intervention.",
+    client: "ReTech (Oaktree)", addedOn: "2026-03-24", threadTs: "1761225227.849689"
+  },
+  {
+    id: 20, date: "2025-09-24", title: "Error running assessment on group of disclosures (IFRS S2)",
+    description: "Error when running IFRS S2 assessment on multiple documents. Possibly due to 12.9MB ESG report size.",
+    feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "Medium", status: "Closed",
+    resolution: "Resolved in thread — file size issue addressed.",
+    client: "Prospect (Liontown)", addedOn: "2026-03-24", threadTs: "1758739552.554659"
+  },
+  {
+    id: 21, date: "2025-09-12", title: "Workspace vs Tracker showing different action item totals",
+    description: "Client confused — Workspace shows 41 action items while Tracker shows correct per-standard totals (39, 39, 33).",
+    feature: "Tracker/Workspace", reporter: "Fatou Dieng", priority: "Medium", status: "Closed",
+    resolution: "Explained: 41 represents deduplicated total across all three standards. Not a bug — UX clarification needed.",
+    client: "Popular Bank", addedOn: "2026-03-24", threadTs: "1757708746.673539"
+  },
+  {
+    id: 22, date: "2025-09-11", title: "Client unable to log in — registration errors",
+    description: "Portage Mutual client seeing errors during registration, unable to complete login even after re-invitation.",
+    feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "High", status: "Closed",
+    resolution: "User removed and re-registered. Password reset sent successfully.",
+    client: "Portage Mutual", addedOn: "2026-03-24", threadTs: "1757616991.440989"
+  },
+  {
+    id: 23, date: "2025-07-17", title: "AI showing 'Likely Met' with no supporting quotes",
+    description: "Assessment result showing 'Likely Met' status but no quotes pulled to support the determination.",
+    feature: "AI/Methodology", reporter: "Jeff Horlor", priority: "Medium", status: "Closed",
+    resolution: "Known issue with old engine. New AI engine deployed in August with improvements.",
+    client: "Internal/demos", addedOn: "2026-03-24", threadTs: "1752782716.123789"
+  },
+  {
+    id: 24, date: "2025-07-16", title: "Assessment datapoints failing to run (TCFD)",
+    description: "Some datapoints in TCFD assessment completely failing to run, not even executing.",
+    feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "Medium", status: "Closed",
+    resolution: "Re-run resolved the issue. Team advised to tag Ina/Phillip if persistent.",
+    client: "Demo - UBS Group", addedOn: "2026-03-24", threadTs: "1752677550.181649"
+  },
+  {
+    id: 25, date: "2025-07-15", title: "Delete Assessment View function broken",
+    description: "Cannot delete assessment views due to recent security upgrade breaking the functionality.",
+    feature: "Compliance UI", reporter: "Ina Li", priority: "Medium", status: "Closed",
+    resolution: "Fix deployed with July 25 release. Manual deletions handled in the interim.",
+    client: "All users", addedOn: "2026-03-24", threadTs: "1752595428.595679"
+  },
+  {
+    id: 26, date: "2025-07-14", title: "Cannot delete test assessment from client org",
+    description: "Assessment 'h' cannot be deleted from Interface client organization despite multiple attempts.",
+    feature: "Compliance UI", reporter: "Fatou Dieng", priority: "Low", status: "Closed",
+    resolution: "Manually removed by Ina.",
+    client: "Interface", addedOn: "2026-03-24", threadTs: "1752507041.410299"
+  },
+  {
+    id: 27, date: "2025-07-10", title: "IFRS S2 datapoint count changed without notification",
+    description: "IFRS went from 147 to 112 datapoints, CSRD also changed. No notification to clients or internal teams.",
+    feature: "Data/Datapoints", reporter: "Fatou Dieng", priority: "Medium", status: "Closed",
+    resolution: "Explained as methodology improvement. Team agreed to batch future updates with Gainsight notifications.",
+    client: "Interface", addedOn: "2026-03-24", threadTs: "1752160488.263729"
+  },
+  {
+    id: 28, date: "2025-07-03", title: "Compliance results page missing dropdowns for Governance and RM",
+    description: "Only Strategy and M&T pillars have dropdown navigation. Governance and RM lack themed groupings.",
+    feature: "Compliance UI", reporter: "Adam Rochwerg", priority: "Low", status: "Open",
+    resolution: "Feature request discussed. No timeline set.",
+    client: "All users", addedOn: "2026-03-24", threadTs: "1751571190.840509"
+  },
+  {
+    id: 29, date: "2025-06-24", title: "Best practices in Tracker outdated (2021-2022)",
+    description: "Clients asking for best practice examples but content is from 2021/2022 and not being updated.",
+    feature: "Tracker/Workspace", reporter: "Adam Rochwerg", priority: "Low", status: "Open",
+    resolution: "Discussion about turning off functionality. No resolution yet.",
+    client: "Multiple clients", addedOn: "2026-03-24", threadTs: "1750775379.094169"
+  },
+  {
+    id: 30, date: "2025-06-23", title: "SSO login issues for Meta users",
+    description: "Meta team experiencing SSO login problems.",
+    feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "Medium", status: "Closed",
+    resolution: "Determined to be Meta's internal IT issue, not Manifest Climate product.",
+    client: "Meta", addedOn: "2026-03-24", threadTs: "1750691413.447939"
+  },
+  {
+    id: 31, date: "2025-06-18", title: "Capital One team unable to log in",
+    description: "Entire Capital One team experiencing login issues. Union looks OK but users can't access platform.",
+    feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "High", status: "Closed",
+    resolution: "Investigated by Alan. Issue resolved.",
+    client: "Capital One", addedOn: "2026-03-24", threadTs: "1750276266.205009"
+  },
+  {
+    id: 32, date: "2025-06-18", title: "Tracker Insights not showing full database",
+    description: "In Tracker Insights, client cannot see entire database — only peer data showing.",
+    feature: "Tracker/Workspace", reporter: "Fatou Dieng", priority: "Medium", status: "Closed",
+    resolution: "Caused by no Additional Sectors selected in Union. Config updated and working.",
+    client: "Tishman Speyer", addedOn: "2026-03-24", threadTs: "1750257875.724179"
+  },
+  {
+    id: 33, date: "2025-06-03", title: "IFRS S2 assessment output questioned — SASB guidance",
+    description: "Question about whether IFRS S2 industry-specific guidance (SASB) result is accurate.",
+    feature: "AI/Methodology", reporter: "Jeff Horlor", priority: "Low", status: "Closed",
+    resolution: "Answered in thread — methodology clarification provided.",
+    client: "CAPREIT", addedOn: "2026-03-24", threadTs: "1748975396.381189"
+  },
+  {
+    id: 34, date: "2025-05-21", title: "Document viewer showing error when clicking hyperlinked pages",
+    description: "During Tracker demo, clicking hyperlinked page numbers to access reports shows an error.",
+    feature: "PDF Viewer", reporter: "Fatou Dieng", priority: "Medium", status: "Closed",
+    resolution: "Investigated by Ina. Issue addressed.",
+    client: "PwC", addedOn: "2026-03-24", threadTs: "1747856342.504779"
+  },
+  {
+    id: 35, date: "2025-05-14", title: "Excel export uses different terminology than in-product",
+    description: "Export shows 'Compliance Status' vs 'Disclosure Status' and 'Fully Met' vs 'Likely Met'.",
+    feature: "Compliance UI", reporter: "Jeff Horlor", priority: "Medium", status: "Open",
+    resolution: "Bug reported. No fix timeline confirmed.",
+    client: "All users", addedOn: "2026-03-24", threadTs: "1747257857.557939"
+  },
+  {
+    id: 36, date: "2025-05-06", title: "Comparison View intermittently not showing selected assessments",
+    description: "Selecting 3 assessments but only 2 show up initially. Need to reselect multiple times.",
+    feature: "Comparison View", reporter: "Jeff Horlor", priority: "Medium", status: "Closed",
+    resolution: "Could not reproduce initially. Later fixed as part of Mar 2026 Comparison View patch.",
+    client: "Internal/demos", addedOn: "2026-03-24", threadTs: "1746562403.584409"
+  }
+];
+
+// ========== APP STATE ==========
+let currentSort = { key: 'date', dir: 'desc' };
+let tableStatusFilter = 'all';
+
+// ========== HELPERS ==========
+function getFiltered() {
+  const feat = document.getElementById('filterFeature').value;
+  const status = document.getElementById('filterStatus').value;
+  const priority = document.getElementById('filterPriority').value;
+  const search = document.getElementById('filterSearch').value.toLowerCase();
+
+  return ISSUES.filter(i => {
+    if (feat !== 'all' && i.feature !== feat) return false;
+    if (status !== 'all' && i.status !== status) return false;
+    if (priority !== 'all' && i.priority !== priority) return false;
+    if (tableStatusFilter !== 'all' && i.status !== tableStatusFilter) return false;
+    if (search && !i.title.toLowerCase().includes(search) && !i.description.toLowerCase().includes(search) && !i.feature.toLowerCase().includes(search) && !i.reporter.toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function getFeatures() {
+  return [...new Set(ISSUES.map(i => i.feature))].sort();
+}
+
+// ========== KPIs ==========
+function renderKPIs(filtered) {
+  const total = filtered.length;
+  const open = filtered.filter(i => i.status === 'Open').length;
+  const closed = filtered.filter(i => i.status === 'Closed').length;
+  const rate = total > 0 ? Math.round((closed / total) * 100) : 0;
+  const highOpen = filtered.filter(i => i.status === 'Open' && i.priority === 'High').length;
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Total Issues</div><div class="kpi-value accent">${total}</div><div class="kpi-sub">Last 6 months</div></div>
+    <div class="kpi"><div class="kpi-label">Open Issues</div><div class="kpi-value red">${open}</div><div class="kpi-sub">${highOpen} high priority</div></div>
+    <div class="kpi"><div class="kpi-label">Resolved Issues</div><div class="kpi-value green">${closed}</div><div class="kpi-sub">${rate}% resolution rate</div></div>
+    <div class="kpi"><div class="kpi-label">Most Active Feature</div><div class="kpi-value orange" style="font-size: 20px;">${getMostActive(filtered)}</div><div class="kpi-sub">${getMostActiveCount(filtered)} issues</div></div>
+  `;
+}
+
+function getMostActive(data) {
+  const counts = {};
+  data.forEach(i => counts[i.feature] = (counts[i.feature] || 0) + 1);
+  return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || 'N/A';
+}
+function getMostActiveCount(data) {
+  const counts = {};
+  data.forEach(i => counts[i.feature] = (counts[i.feature] || 0) + 1);
+  return Math.max(...Object.values(counts), 0);
+}
+
+// ========== CHARTS ==========
+let chartInstances = {};
+const COLORS = ['#38bdf8', '#34d399', '#fb923c', '#a78bfa', '#f472b6', '#fbbf24', '#67e8f9', '#c084fc', '#f87171', '#4ade80'];
+
+function renderCharts(filtered) {
+  renderByFeatureChart(filtered);
+  renderResolutionChart(filtered);
+  renderTimelineChart(filtered);
+  renderReportersChart(filtered);
+}
+
+function renderByFeatureChart(data) {
+  const counts = {};
+  data.forEach(i => counts[i.feature] = (counts[i.feature] || 0) + 1);
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  if (chartInstances.byFeature) chartInstances.byFeature.destroy();
+  chartInstances.byFeature = new Chart(document.getElementById('chartByFeature'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s[0]),
+      datasets: [{
+        data: sorted.map(s => s[1]),
+        backgroundColor: sorted.map((_, i) => COLORS[i % COLORS.length]),
+        borderRadius: 6,
+        barThickness: 28
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+        y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderResolutionChart(data) {
+  const features = getFeatures();
+  const openCounts = [];
+  const closedCounts = [];
+
+  features.forEach(f => {
+    const fIssues = data.filter(i => i.feature === f);
+    openCounts.push(fIssues.filter(i => i.status === 'Open').length);
+    closedCounts.push(fIssues.filter(i => i.status === 'Closed').length);
+  });
+
+  if (chartInstances.resolution) chartInstances.resolution.destroy();
+  chartInstances.resolution = new Chart(document.getElementById('chartResolution'), {
+    type: 'bar',
+    data: {
+      labels: features,
+      datasets: [
+        { label: 'Resolved', data: closedCounts, backgroundColor: '#34d399', borderRadius: 4, barThickness: 20 },
+        { label: 'Open', data: openCounts, backgroundColor: '#f87171', borderRadius: 4, barThickness: 20 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45 } },
+        y: { stacked: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderTimelineChart(data) {
+  const months = {};
+  data.forEach(i => {
+    const m = i.date.substring(0, 7);
+    if (!months[m]) months[m] = { open: 0, closed: 0 };
+    months[m][i.status === 'Open' ? 'open' : 'closed']++;
+  });
+
+  const sortedMonths = Object.keys(months).sort();
+  const labels = sortedMonths.map(m => {
+    const [y, mo] = m.split('-');
+    return new Date(y, mo - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  });
+
+  if (chartInstances.timeline) chartInstances.timeline.destroy();
+  chartInstances.timeline = new Chart(document.getElementById('chartTimeline'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Resolved', data: sortedMonths.map(m => months[m].closed), backgroundColor: '#34d399', borderRadius: 4 },
+        { label: 'Open', data: sortedMonths.map(m => months[m].open), backgroundColor: '#f87171', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: '#94a3b8' } },
+        y: { stacked: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderReportersChart(data) {
+  const counts = {};
+  data.forEach(i => counts[i.reporter] = (counts[i.reporter] || 0) + 1);
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+  if (chartInstances.reporters) chartInstances.reporters.destroy();
+  chartInstances.reporters = new Chart(document.getElementById('chartReporters'), {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(s => s[0]),
+      datasets: [{ data: sorted.map(s => s[1]), backgroundColor: COLORS.slice(0, sorted.length), borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 12 }, padding: 12 } } }
+    }
+  });
+}
+
+// ========== TABLE ==========
+// Slack channel ID for #help-faq
+const SLACK_CHANNEL_ID = 'C062YHLC4DU';
+
+function getSlackLink(threadTs) {
+  if (!threadTs) return '';
+  // Slack deep link format: /archives/CHANNEL/pTIMESTAMP_WITHOUT_DOT
+  const tsNoDot = threadTs.replace('.', '');
+  return `https://manifestclimate.slack.com/archives/${SLACK_CHANNEL_ID}/p${tsNoDot}`;
+}
+
+// Track seen issues — newest addedOn date marks "new" issues
+function getSeenIssueIds() {
+  try { return new Set(JSON.parse(localStorage.getItem('helpfaq_seen_ids') || '[]')); } catch { return new Set(); }
+}
+function markAllSeen(issues) {
+  const ids = issues.map(i => i.id);
+  localStorage.setItem('helpfaq_seen_ids', JSON.stringify(ids));
+  refresh();
+}
+
+function isNewIssue(issue) {
+  if (!issue.addedOn) return false;
+  const latestAddedOn = ISSUES.reduce((max, i) => i.addedOn && i.addedOn > max ? i.addedOn : max, '');
+  if (!latestAddedOn) return false;
+  const seen = getSeenIssueIds();
+  return issue.addedOn === latestAddedOn && !seen.has(issue.id);
+}
+
+function renderTable(data) {
+  const sorted = [...data].sort((a, b) => {
+    let va = a[currentSort.key], vb = b[currentSort.key];
+    if (currentSort.key === 'date') { va = new Date(va); vb = new Date(vb); }
+    if (va < vb) return currentSort.dir === 'asc' ? -1 : 1;
+    if (va > vb) return currentSort.dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const hasNew = sorted.some(i => isNewIssue(i));
+
+  document.getElementById('issueTableBody').innerHTML = sorted.map(i => {
+    const newBadge = isNewIssue(i) ? '<span class="badge badge-new">NEW</span>' : '';
+    const slackUrl = getSlackLink(i.threadTs);
+    const slackCell = slackUrl
+      ? `<a href="${slackUrl}" target="_blank" rel="noopener" class="slack-link" title="View in Slack">View &#x2197;</a>`
+      : '<span style="color: var(--text-muted);">—</span>';
+    return `<tr>
+      <td style="white-space: nowrap;">${new Date(i.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}${newBadge}</td>
+      <td><strong>${i.title}</strong><br><span style="color: var(--text-muted); font-size: 12px;">${i.description.substring(0, 100)}${i.description.length > 100 ? '...' : ''}</span></td>
+      <td><span class="badge badge-feature">${i.feature}</span></td>
+      <td>${i.reporter}</td>
+      <td><span class="priority-dot priority-${i.priority.toLowerCase()}"></span>${i.priority}</td>
+      <td><span class="badge badge-${i.status.toLowerCase()}">${i.status}</span></td>
+      <td style="font-size: 12px; color: var(--text-muted); max-width: 250px;">${i.resolution}</td>
+      <td style="text-align: center;">${slackCell}</td>
+    </tr>`;
+  }).join('');
+
+  // Show/hide "Mark all read" button
+  const markReadBtn = document.getElementById('markAllReadBtn');
+  if (markReadBtn) markReadBtn.style.display = hasNew ? 'inline-block' : 'none';
+}
+
+function sortTable(key) {
+  if (currentSort.key === key) {
+    currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort = { key, dir: 'asc' };
+  }
+  refresh();
+}
+
+function setTableTab(el) {
+  document.querySelectorAll('.table-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  tableStatusFilter = el.dataset.filter;
+  refresh();
+}
+
+// ========== INIT ==========
+function populateFilters() {
+  const sel = document.getElementById('filterFeature');
+  getFeatures().forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    sel.appendChild(opt);
+  });
+}
+
+function refresh() {
+  const filtered = getFiltered();
+  renderKPIs(filtered);
+  renderCharts(filtered);
+  renderTable(filtered);
+}
+
+function init() {
+  document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+  populateFilters();
+
+  ['filterFeature', 'filterStatus', 'filterPriority'].forEach(id => {
+    document.getElementById(id).addEventListener('change', refresh);
+  });
+  document.getElementById('filterSearch').addEventListener('input', refresh);
+
+  refresh();
+}
+
+init();
+</script>
+</body>
+</html>
