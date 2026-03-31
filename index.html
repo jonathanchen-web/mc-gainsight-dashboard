@@ -2049,13 +2049,13 @@
                 }
 
                 // Count unique users and accounts with events in the previous period
+                // Don't filter by module — any page view event means the user was active,
+                // matching how the current period uses lastSeenDate (any activity = active)
                 const prevUserIds = new Set();
                 const prevAcctIds = new Set();
                 for (const evt of _featureEvents) {
                     if (evt.d < prevCutoffMs || evt.d >= cutoffMs) continue;
                     if (isExcludedUser(evt.u)) continue;
-                    // Apply same feature filter as current period
-                    if (!featureFilter.includes(evt.m)) continue;
                     prevUserIds.add(evt.u);
                     const acctId = _userAcctMap[evt.u];
                     if (acctId) prevAcctIds.add(acctId);
@@ -2065,6 +2065,7 @@
                 // Only count accounts that aren't excluded
                 const validAcctIds = new Set(accounts.map(a => a.id));
                 const prevActiveAccounts = [...prevAcctIds].filter(id => validAcctIds.has(id)).length;
+                console.log(`[GS] % change: current ${activeUsers}u/${activeAccounts}a, prev ${prevActiveUsers}u/${prevActiveAccounts}a (prevCutoff=${new Date(prevCutoffMs).toISOString()}, cutoff=${new Date(cutoffMs).toISOString()})`);
 
                 return {
                     accounts: accounts.slice(0, 10),
