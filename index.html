@@ -2035,46 +2035,40 @@
                 // Build monthly trend data from feature events
                 const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs);
 
-                // Compute % change by comparing current vs previous period using the SAME
-                // data source (_featureEvents) for both, ensuring an apples-to-apples comparison.
-                // The main KPI values use lastSeenDate (broader), but % change uses events only.
-                let prevCutoffMs;
-                if (timePeriodMonths === 0) {
-                    prevCutoffMs = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
-                } else {
-                    prevCutoffMs = new Date(now.getFullYear(), now.getMonth() - 2 * timePeriodMonths, 1).getTime();
-                }
+                // Compute % change: compare current period against the previous period
+                // using the EXACT same logic (lastSeenDate-based filtering).
+                // "Previous period" = one step back in the dropdown, e.g.:
+                //   "This Month" (cutoff=Mar 1) → previous uses cutoff=Feb 1
+                //   "Last Month" (cutoff=Feb 1) → previous uses cutoff=Jan 1
+                //   "Last 3mo" (cutoff=3mo ago) → previous uses cutoff=6mo ago
+                //   "Last 6mo" (cutoff=6mo ago) → previous uses cutoff=12mo ago
+                const prevPeriodMonths = timePeriodMonths === 0
+                    ? 1  // "This Month" compares against "Last Month"
+                    : timePeriodMonths * 2;  // double the lookback
+                const prevCutoffDate = new Date(now.getFullYear(), now.getMonth() - prevPeriodMonths, 1);
+                const prevCutoffMs = prevCutoffDate.getTime();
 
-                // Count unique users/accounts from events in CURRENT period (for % change only)
-                const currEvtUserIds = new Set();
-                const currEvtAcctIds = new Set();
-                // Count unique users/accounts from events in PREVIOUS period
-                const prevEvtUserIds = new Set();
-                const prevEvtAcctIds = new Set();
-                const validAcctIds = new Set(accounts.map(a => a.id));
+                // Filter users with the previous period cutoff (same logic as current period)
+                const prevUsers = allExternalUsers.filter(u => {
+                    const lastSeen = u.lastSeenDate || 0;
+                    const lastSeenMs = typeof lastSeen === 'number' ? lastSeen : new Date(lastSeen).getTime();
+                    if (!lastSeenMs || lastSeenMs < prevCutoffMs) return false;
+                    const topFeats = inferTopFeatures(u);
+                    if (!topFeats.some(f => featureFilter.includes(f))) return false;
+                    return true;
+                });
 
-                for (const evt of _featureEvents) {
-                    if (isExcludedUser(evt.u)) continue;
-                    const acctId = _userAcctMap[evt.u];
-                    const acctValid = acctId && validAcctIds.has(acctId);
+                // Build account user counts for previous period
+                const prevUsersByAcct = {};
+                prevUsers.forEach(u => {
+                    const aid = u.accountId;
+                    if (!prevUsersByAcct[aid]) prevUsersByAcct[aid] = [];
+                    prevUsersByAcct[aid].push(u);
+                });
 
-                    if (evt.d >= cutoffMs) {
-                        // Current period
-                        currEvtUserIds.add(evt.u);
-                        if (acctValid) currEvtAcctIds.add(acctId);
-                    } else if (evt.d >= prevCutoffMs) {
-                        // Previous period
-                        prevEvtUserIds.add(evt.u);
-                        if (acctValid) prevEvtAcctIds.add(acctId);
-                    }
-                }
-
-                const prevActiveUsers = prevEvtUserIds.size;
-                const prevActiveAccounts = prevEvtAcctIds.size;
-                // Use event-based current counts for the % change calculation
-                const currEvtActiveUsers = currEvtUserIds.size;
-                const currEvtActiveAccounts = currEvtAcctIds.size;
-                console.log(`[GS] % change (event-based): curr ${currEvtActiveUsers}u/${currEvtActiveAccounts}a, prev ${prevActiveUsers}u/${prevActiveAccounts}a (prevCutoff=${new Date(prevCutoffMs).toISOString()}, cutoff=${new Date(cutoffMs).toISOString()})`);
+                const prevActiveUsers = prevUsers.length;
+                const prevActiveAccounts = accounts.filter(a => (prevUsersByAcct[a.id] || []).length > 0).length;
+                console.log(`[GS] % change: current ${activeUsers}u/${activeAccounts}a, prev ${prevActiveUsers}u/${prevActiveAccounts}a (prevCutoff=${prevCutoffDate.toISOString()}, cutoff=${cutoffDate.toISOString()})`);
 
                 return {
                     accounts: accounts.slice(0, 10),
@@ -2083,8 +2077,6 @@
                     topUser: topUser,
                     activeUsers,
                     activeAccounts,
-                    currEvtActiveUsers,
-                    currEvtActiveAccounts,
                     prevActiveUsers,
                     prevActiveAccounts,
                     totalUsers: allExternalUsers.length,
@@ -2142,8 +2134,8 @@
                     el.className = `gs-kpi-change ${cls}`;
                 }
 
-                renderChange('gs-kpi-maa-change', data.currEvtActiveAccounts, data.prevActiveAccounts, prevPeriodLabel);
-                renderChange('gs-kpi-mau-change', data.currEvtActiveUsers, data.prevActiveUsers, prevPeriodLabel);
+                renderChange('gs-kpi-maa-change', data.activeAccounts, data.prevActiveAccounts, prevPeriodLabel);
+                renderChange('gs-kpi-mau-change', data.activeUsers, data.prevActiveUsers, prevPeriodLabel);
 
                 // Top Accounts Table
                 const acctHtml = data.accounts.map((a, i) => `
