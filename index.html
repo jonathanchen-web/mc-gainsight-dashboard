@@ -2036,7 +2036,9 @@
                 const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs);
 
                 // Compute previous equivalent period for % change comparison
-                // Previous period = same length window immediately before the current cutoff
+                // Uses _featureEvents (individual event timestamps) instead of lastSeenDate,
+                // because lastSeenDate only stores the most recent visit and would undercount
+                // users who were active in both the previous and current periods.
                 let prevCutoffMs;
                 if (timePeriodMonths === 0) {
                     // "This Month": previous = last month (1st of last month to 1st of this month)
@@ -2046,24 +2048,23 @@
                     prevCutoffMs = new Date(now.getFullYear(), now.getMonth() - 2 * timePeriodMonths, 1).getTime();
                 }
 
-                const prevUsers = allExternalUsers.filter(u => {
-                    const lastSeen = u.lastSeenDate || 0;
-                    const lastSeenMs = typeof lastSeen === 'number' ? lastSeen : new Date(lastSeen).getTime();
-                    if (!lastSeenMs || lastSeenMs < prevCutoffMs || lastSeenMs >= cutoffMs) return false;
-                    const topFeats = inferTopFeatures(u);
-                    if (!topFeats.some(f => featureFilter.includes(f))) return false;
-                    return true;
-                });
+                // Count unique users and accounts with events in the previous period
+                const prevUserIds = new Set();
+                const prevAcctIds = new Set();
+                for (const evt of _featureEvents) {
+                    if (evt.d < prevCutoffMs || evt.d >= cutoffMs) continue;
+                    if (isExcludedUser(evt.u)) continue;
+                    // Apply same feature filter as current period
+                    if (!featureFilter.includes(evt.m)) continue;
+                    prevUserIds.add(evt.u);
+                    const acctId = _userAcctMap[evt.u];
+                    if (acctId) prevAcctIds.add(acctId);
+                }
 
-                const prevUsersByAcct = {};
-                prevUsers.forEach(u => {
-                    const aid = u.accountId;
-                    if (!prevUsersByAcct[aid]) prevUsersByAcct[aid] = [];
-                    prevUsersByAcct[aid].push(u);
-                });
-
-                const prevActiveUsers = prevUsers.length;
-                const prevActiveAccounts = accounts.filter(a => (prevUsersByAcct[a.id] || []).length > 0).length;
+                const prevActiveUsers = prevUserIds.size;
+                // Only count accounts that aren't excluded
+                const validAcctIds = new Set(accounts.map(a => a.id));
+                const prevActiveAccounts = [...prevAcctIds].filter(id => validAcctIds.has(id)).length;
 
                 return {
                     accounts: accounts.slice(0, 10),
