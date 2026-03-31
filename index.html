@@ -334,6 +334,24 @@
             color: var(--muted);
         }
 
+        .gs-kpi-change {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .gs-kpi-change.positive {
+            color: #4ade80;
+        }
+
+        .gs-kpi-change.negative {
+            color: #f87171;
+        }
+
+        .gs-kpi-change.neutral {
+            color: var(--muted);
+        }
+
         .gs-card {
             background: var(--surface2);
             border: 1px solid var(--border);
@@ -1176,14 +1194,16 @@
                         <div class="gs-kpi-detail" id="gs-kpi-top-user-company">—</div>
                     </div>
                     <div class="gs-kpi-card amber">
-                        <div class="gs-kpi-label">Monthly Active Accounts</div>
+                        <div class="gs-kpi-label" id="gs-kpi-maa-label">Active Accounts</div>
                         <div class="gs-kpi-value" id="gs-kpi-maa">0</div>
                         <div class="gs-kpi-detail" id="gs-kpi-maa-detail">Last 30 days</div>
+                        <div class="gs-kpi-change" id="gs-kpi-maa-change"></div>
                     </div>
                     <div class="gs-kpi-card green">
-                        <div class="gs-kpi-label">Monthly Active Users</div>
+                        <div class="gs-kpi-label" id="gs-kpi-mau-label">Active Users</div>
                         <div class="gs-kpi-value" id="gs-kpi-mau">0</div>
                         <div class="gs-kpi-detail" id="gs-kpi-mau-detail">Last 30 days</div>
+                        <div class="gs-kpi-change" id="gs-kpi-mau-change"></div>
                     </div>
                 </div>
 
@@ -2015,6 +2035,36 @@
                 // Build monthly trend data from feature events
                 const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs);
 
+                // Compute previous equivalent period for % change comparison
+                // Previous period = same length window immediately before the current cutoff
+                let prevCutoffMs;
+                if (timePeriodMonths === 0) {
+                    // "This Month": previous = last month (1st of last month to 1st of this month)
+                    prevCutoffMs = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+                } else {
+                    // "Last N months": previous = N months before the current cutoff
+                    prevCutoffMs = new Date(now.getFullYear(), now.getMonth() - 2 * timePeriodMonths, 1).getTime();
+                }
+
+                const prevUsers = allExternalUsers.filter(u => {
+                    const lastSeen = u.lastSeenDate || 0;
+                    const lastSeenMs = typeof lastSeen === 'number' ? lastSeen : new Date(lastSeen).getTime();
+                    if (!lastSeenMs || lastSeenMs < prevCutoffMs || lastSeenMs >= cutoffMs) return false;
+                    const topFeats = inferTopFeatures(u);
+                    if (!topFeats.some(f => featureFilter.includes(f))) return false;
+                    return true;
+                });
+
+                const prevUsersByAcct = {};
+                prevUsers.forEach(u => {
+                    const aid = u.accountId;
+                    if (!prevUsersByAcct[aid]) prevUsersByAcct[aid] = [];
+                    prevUsersByAcct[aid].push(u);
+                });
+
+                const prevActiveUsers = prevUsers.length;
+                const prevActiveAccounts = accounts.filter(a => (prevUsersByAcct[a.id] || []).length > 0).length;
+
                 return {
                     accounts: accounts.slice(0, 10),
                     topAccount: topAcct,
@@ -2022,6 +2072,8 @@
                     topUser: topUser,
                     activeUsers,
                     activeAccounts,
+                    prevActiveUsers,
+                    prevActiveAccounts,
                     totalUsers: allExternalUsers.length,
                     allAccounts: accounts,
                     allUsers: users,
@@ -2043,11 +2095,42 @@
                 document.getElementById('gs-kpi-top-user-company').textContent = data.topUser.accountName || '—';
 
                 const periodLabel = data.timePeriodMonths === 0 ? 'This Month' : data.timePeriodMonths === 1 ? 'Last Month' : `Last ${data.timePeriodMonths}mo`;
+                const prevPeriodLabel = data.timePeriodMonths === 0 ? 'last month' : data.timePeriodMonths === 1 ? 'prior month' : `prior ${data.timePeriodMonths}mo`;
+
+                // Dynamic labels with time period
+                document.getElementById('gs-kpi-maa-label').textContent = `Active Accounts (${periodLabel})`;
+                document.getElementById('gs-kpi-mau-label').textContent = `Active Users (${periodLabel})`;
+
                 document.getElementById('gs-kpi-maa').textContent = data.activeAccounts;
-                document.getElementById('gs-kpi-maa-detail').textContent = `of ${data.allAccounts.length} total (${periodLabel})`;
+                document.getElementById('gs-kpi-maa-detail').textContent = `of ${data.allAccounts.length} total`;
 
                 document.getElementById('gs-kpi-mau').textContent = data.activeUsers;
-                document.getElementById('gs-kpi-mau-detail').textContent = `of ${data.totalUsers} total (${periodLabel})`;
+                document.getElementById('gs-kpi-mau-detail').textContent = `of ${data.totalUsers} total`;
+
+                // % change from previous period
+                function renderChange(elId, current, previous, label) {
+                    const el = document.getElementById(elId);
+                    if (!el) return;
+                    if (previous === 0 && current === 0) {
+                        el.textContent = '';
+                        el.className = 'gs-kpi-change';
+                        return;
+                    }
+                    if (previous === 0) {
+                        el.textContent = '▲ New';
+                        el.className = 'gs-kpi-change positive';
+                        return;
+                    }
+                    const pctChange = ((current - previous) / previous * 100).toFixed(1);
+                    const sign = pctChange > 0 ? '+' : '';
+                    const arrow = pctChange > 0 ? '▲' : pctChange < 0 ? '▼' : '—';
+                    const cls = pctChange > 0 ? 'positive' : pctChange < 0 ? 'negative' : 'neutral';
+                    el.textContent = `${arrow} ${sign}${pctChange}% vs ${label}`;
+                    el.className = `gs-kpi-change ${cls}`;
+                }
+
+                renderChange('gs-kpi-maa-change', data.activeAccounts, data.prevActiveAccounts, prevPeriodLabel);
+                renderChange('gs-kpi-mau-change', data.activeUsers, data.prevActiveUsers, prevPeriodLabel);
 
                 // Top Accounts Table
                 const acctHtml = data.accounts.map((a, i) => `
