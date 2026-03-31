@@ -1813,7 +1813,7 @@
             }
 
             // Build monthly trend data from users, accounts, and feature events
-            function buildMonthlyTrends(users, accounts, featureEvents, timePeriodMonths, cutoffMs) {
+            function buildMonthlyTrends(users, accounts, featureEvents, timePeriodMonths, cutoffMs, userAcctMap, validAcctIds) {
                 const now = new Date();
                 const months = [];
                 // Generate month labels for the selected period
@@ -1826,13 +1826,17 @@
                     });
                 }
 
-                // Active users per month (users whose lastSeenDate falls within that month)
+                // Active users per month — use featureEvents (individual event timestamps)
+                // so users active in multiple months are counted in each month, not just
+                // the month of their lastSeenDate.
                 const activeUsersPerMonth = months.map(m => {
-                    return users.filter(u => {
-                        const ls = u.lastSeenDate || 0;
-                        const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
-                        return lsMs >= m.start && lsMs <= m.end;
-                    }).length;
+                    const userIds = new Set();
+                    for (const evt of featureEvents) {
+                        if (evt.d >= m.start && evt.d <= m.end) {
+                            userIds.add(evt.u);
+                        }
+                    }
+                    return userIds.size;
                 });
 
                 // New users per month (signed up in that month)
@@ -1844,17 +1848,19 @@
                     }).length;
                 });
 
-                // Active accounts per month (accounts with at least one user whose lastSeenDate falls within that month)
+                // Active accounts per month — use featureEvents to count accounts with
+                // at least one user event in that month (same fix as active users)
                 const activeAcctsPerMonth = months.map(m => {
-                    const activeAcctIds = new Set();
-                    users.forEach(u => {
-                        const ls = u.lastSeenDate || 0;
-                        const lsMs = typeof ls === 'number' ? ls : new Date(ls).getTime();
-                        if (lsMs >= m.start && lsMs <= m.end && u.accountId) {
-                            activeAcctIds.add(u.accountId);
+                    const acctIds = new Set();
+                    for (const evt of featureEvents) {
+                        if (evt.d >= m.start && evt.d <= m.end) {
+                            const acctId = userAcctMap && userAcctMap[evt.u];
+                            if (acctId && (!validAcctIds || validAcctIds.has(acctId))) {
+                                acctIds.add(acctId);
+                            }
                         }
-                    });
-                    return activeAcctIds.size;
+                    }
+                    return acctIds.size;
                 });
 
                 // New accounts per month (created in that month)
@@ -2033,7 +2039,8 @@
                 const activeAccounts = accounts.filter(a => a.userCount > 0).length;
 
                 // Build monthly trend data from feature events
-                const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs);
+                const validAcctIdSet = new Set(accounts.map(a => a.id));
+                const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs, _userAcctMap, validAcctIdSet);
 
                 // Compute % change: compare current period against the previous period
                 // using the EXACT same logic (lastSeenDate-based filtering).
