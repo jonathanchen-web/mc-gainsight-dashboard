@@ -946,6 +946,36 @@
             color: var(--muted);
         }
 
+        .dp-kpi-toggle {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            width: fit-content;
+            margin-bottom: 16px;
+        }
+
+        .dp-kpi-toggle-btn {
+            background: none;
+            color: var(--text);
+            border: none;
+            padding: 7px 16px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            border-right: 1px solid var(--border);
+        }
+
+        .dp-kpi-toggle-btn:last-child {
+            border-right: none;
+        }
+
+        .dp-kpi-toggle-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
         .dp-search-bar {
             margin-bottom: 24px;
         }
@@ -1499,24 +1529,29 @@
                         <input type="text" id="dp-searchInput" placeholder="Search orgs, reasons, users..." aria-label="Search dashboard">
                     </div>
 
+                    <div class="dp-kpi-toggle">
+                        <button class="dp-kpi-toggle-btn active" data-kpi-period="current" onclick="window.DP.setKPIPeriod('current')">Current Month</button>
+                        <button class="dp-kpi-toggle-btn" data-kpi-period="previous" onclick="window.DP.setKPIPeriod('previous')">Previous Month</button>
+                    </div>
+
                     <div class="dp-kpi-grid">
                         <div class="dp-kpi-card used">
-                            <div class="dp-kpi-label">Used This Month (Paid)</div>
+                            <div class="dp-kpi-label" id="dp-kpi-used-paid-label">Used This Month (Paid)</div>
                             <div class="dp-kpi-value" id="dp-kpi-used-paid">0</div>
                             <div class="dp-kpi-change" id="dp-kpi-used-paid-change"></div>
                         </div>
                         <div class="dp-kpi-card used-unpaid">
-                            <div class="dp-kpi-label">Used This Month (Unpaid)</div>
+                            <div class="dp-kpi-label" id="dp-kpi-used-unpaid-label">Used This Month (Unpaid)</div>
                             <div class="dp-kpi-value" id="dp-kpi-used-unpaid">0</div>
                             <div class="dp-kpi-change" id="dp-kpi-used-unpaid-change"></div>
                         </div>
                         <div class="dp-kpi-card added">
-                            <div class="dp-kpi-label">Added This Month (Paid)</div>
+                            <div class="dp-kpi-label" id="dp-kpi-added-paid-label">Added This Month (Paid)</div>
                             <div class="dp-kpi-value" id="dp-kpi-added-paid">0</div>
                             <div class="dp-kpi-change" id="dp-kpi-added-paid-change"></div>
                         </div>
                         <div class="dp-kpi-card added-unpaid">
-                            <div class="dp-kpi-label">Added This Month (Unpaid)</div>
+                            <div class="dp-kpi-label" id="dp-kpi-added-unpaid-label">Added This Month (Unpaid)</div>
                             <div class="dp-kpi-value" id="dp-kpi-added-unpaid">0</div>
                             <div class="dp-kpi-change" id="dp-kpi-added-unpaid-change"></div>
                         </div>
@@ -3464,36 +3499,51 @@
                 `;
             }
 
-            function renderMonthChange(series) {
-                // Returns { current, changeHTML } for the last two months in a series
-                if (!series || series.length === 0) return { current: 0, changeHTML: '' };
-                const curr = series[series.length - 1].value;
-                const prev = series.length >= 2 ? series[series.length - 2].value : 0;
+            let _kpiPeriod = 'current'; // 'current' or 'previous'
+
+            function getCalendarMonthKey(offset) {
+                // offset 0 = current month, -1 = previous month, etc.
+                const d = new Date();
+                d.setDate(1);
+                d.setMonth(d.getMonth() + offset);
+                return d.toISOString().substring(0, 7); // YYYY-MM
+            }
+
+            function getMonthValue(series, monthKey) {
+                const entry = series.find(s => s.key === monthKey);
+                return entry ? entry.value : 0;
+            }
+
+            function renderKPICard(series, valueElId, changeElId, labelElId, labelText) {
+                const targetKey = _kpiPeriod === 'current' ? getCalendarMonthKey(0) : getCalendarMonthKey(-1);
+                const compareKey = _kpiPeriod === 'current' ? getCalendarMonthKey(-1) : getCalendarMonthKey(-2);
+
+                const curr = getMonthValue(series, targetKey);
+                const prev = getMonthValue(series, compareKey);
                 const diff = curr - prev;
                 const pctVal = prev > 0 ? Math.round((diff / prev) * 100) : (curr > 0 ? 100 : 0);
                 const sign = diff > 0 ? '+' : '';
                 const cls = diff > 0 ? 'dp-change-positive' : diff < 0 ? 'dp-change-negative' : 'dp-change-neutral';
-                const changeHTML = `<span class="${cls}">${sign}${n(diff)} (${sign}${pctVal}%) vs prev month</span>`;
-                return { current: curr, changeHTML };
+                const periodLabel = _kpiPeriod === 'current' ? 'This Month' : 'Last Month';
+
+                document.getElementById(valueElId).textContent = n(curr);
+                document.getElementById(changeElId).innerHTML = `<span class="${cls}">${sign}${n(diff)} (${sign}${pctVal}%) vs prev month</span>`;
+                document.getElementById(labelElId).textContent = labelText.replace('This Month', periodLabel);
+            }
+
+            function setKPIPeriod(period) {
+                _kpiPeriod = period;
+                document.querySelectorAll('.dp-kpi-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`.dp-kpi-toggle-btn[data-kpi-period="${period}"]`)?.classList.add('active');
+                renderKPIs();
             }
 
             function renderKPIs() {
-                const paidUsed = renderMonthChange(_processed.monthlyPaidUsed);
-                const unpaidUsed = renderMonthChange(_processed.monthlyUnpaidUsed);
-                const paidAdded = renderMonthChange(_processed.monthlyPaidAdded);
-                const unpaidAdded = renderMonthChange(_processed.monthlyUnpaidAdded);
-
-                document.getElementById('dp-kpi-used-paid').textContent = n(paidUsed.current);
-                document.getElementById('dp-kpi-used-paid-change').innerHTML = paidUsed.changeHTML;
-
-                document.getElementById('dp-kpi-used-unpaid').textContent = n(unpaidUsed.current);
-                document.getElementById('dp-kpi-used-unpaid-change').innerHTML = unpaidUsed.changeHTML;
-
-                document.getElementById('dp-kpi-added-paid').textContent = n(paidAdded.current);
-                document.getElementById('dp-kpi-added-paid-change').innerHTML = paidAdded.changeHTML;
-
-                document.getElementById('dp-kpi-added-unpaid').textContent = n(unpaidAdded.current);
-                document.getElementById('dp-kpi-added-unpaid-change').innerHTML = unpaidAdded.changeHTML;
+                if (!_processed) return;
+                renderKPICard(_processed.monthlyPaidUsed, 'dp-kpi-used-paid', 'dp-kpi-used-paid-change', 'dp-kpi-used-paid-label', 'Used This Month (Paid)');
+                renderKPICard(_processed.monthlyUnpaidUsed, 'dp-kpi-used-unpaid', 'dp-kpi-used-unpaid-change', 'dp-kpi-used-unpaid-label', 'Used This Month (Unpaid)');
+                renderKPICard(_processed.monthlyPaidAdded, 'dp-kpi-added-paid', 'dp-kpi-added-paid-change', 'dp-kpi-added-paid-label', 'Added This Month (Paid)');
+                renderKPICard(_processed.monthlyUnpaidAdded, 'dp-kpi-added-unpaid', 'dp-kpi-added-unpaid-change', 'dp-kpi-added-unpaid-label', 'Added This Month (Unpaid)');
             }
 
             function makeStackedBarChart(canvasId, paidData, unpaidData, paidLabel, unpaidLabel, paidColor, unpaidColor) {
@@ -3853,7 +3903,7 @@
                 }
             }
 
-            return { init, sortOrgTable, onPaidToggle, toggleOrgExpand };
+            return { init, sortOrgTable, onPaidToggle, toggleOrgExpand, setKPIPeriod };
         })();
 
         // Auth gate — check session before showing dashboard
