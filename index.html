@@ -946,45 +946,29 @@
             color: var(--muted);
         }
 
-        .dp-filter-bar {
-            display: flex;
-            gap: 12px;
+        .dp-search-bar {
             margin-bottom: 24px;
-            flex-wrap: wrap;
-            align-items: center;
         }
 
-        .dp-filter-bar select {
-            flex: 0 1 auto;
-            min-width: 150px;
-        }
-
-        .dp-toggle-group {
-            display: flex;
-            gap: 0;
+        .dp-search-bar input {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 14px;
+            font-size: 13px;
             border: 1px solid var(--border);
             border-radius: 6px;
             background: var(--surface);
-        }
-
-        .dp-toggle-btn {
-            background: none;
             color: var(--text);
-            border: none;
-            padding: 6px 12px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            border-right: 1px solid var(--border);
+            outline: none;
+            transition: border-color 0.15s;
         }
 
-        .dp-toggle-btn:last-child {
-            border-right: none;
+        .dp-search-bar input::placeholder {
+            color: var(--muted);
         }
 
-        .dp-toggle-btn.active {
-            background: var(--accent);
-            color: white;
+        .dp-search-bar input:focus {
+            border-color: var(--accent);
         }
 
         .dp-charts-grid {
@@ -1511,21 +1495,8 @@
                             <button id="dp-clearBtn2" class="dp-action-btn dp-action-btn-danger"><i class="ph ph-trash"></i> Clear Data</button>
                         </div>
                     </div>
-                    <div class="dp-filter-bar">
-                        <select id="dp-filterOrgType" aria-label="Filter by org type">
-                            <option value="">All Orgs</option>
-                            <option value="external">External</option>
-                            <option value="internal">Internal</option>
-                        </select>
-                        <div class="dp-toggle-group">
-                            <button class="dp-toggle-btn active" data-period="weekly">Weekly</button>
-                            <button class="dp-toggle-btn" data-period="monthly">Monthly</button>
-                        </div>
-                        <select id="dp-filterRange" aria-label="Filter by date range">
-                            <option value="all">All Time</option>
-                            <option value="30d">Last 30 Days</option>
-                            <option value="90d">Last 90 Days</option>
-                        </select>
+                    <div class="dp-search-bar">
+                        <input type="text" id="dp-searchInput" placeholder="Search orgs, reasons, users..." aria-label="Search dashboard">
                     </div>
 
                     <div class="dp-kpi-grid">
@@ -3261,24 +3232,17 @@
                 return new Date(y, m - 1).toLocaleString('en', { month: 'short', year: 'numeric' });
             }
 
+            let _searchQuery = '';
+
             function getFilteredRows() {
-                const orgType = document.getElementById('dp-filterOrgType')?.value || '';
-                const range = document.getElementById('dp-filterRange')?.value || 'all';
-
-                let cutoff = '';
-                if (range === '30d') {
-                    const d = new Date(); d.setDate(d.getDate() - 30);
-                    cutoff = d.toISOString().split('T')[0];
-                } else if (range === '90d') {
-                    const d = new Date(); d.setDate(d.getDate() - 90);
-                    cutoff = d.toISOString().split('T')[0];
-                }
-
+                if (!_searchQuery) return _rawRows;
+                const q = _searchQuery.toLowerCase();
                 return _rawRows.filter(row => {
-                    if (orgType === 'external' && !row.external) return false;
-                    if (orgType === 'internal' && row.external) return false;
-                    if (cutoff && row.date < cutoff) return false;
-                    return true;
+                    return (row.org || '').toLowerCase().includes(q)
+                        || (row.reason || '').toLowerCase().includes(q)
+                        || (row.user || '').toLowerCase().includes(q)
+                        || (row.source || '').toLowerCase().includes(q)
+                        || (row.orgtype || '').toLowerCase().includes(q);
                 });
             }
 
@@ -3774,14 +3738,18 @@
             function clearData() {
                 _rawRows = [];
                 _processed = null;
+                _searchQuery = '';
                 // Properly destroy chart instances before clearing
                 Object.values(_charts).forEach(c => c && c.destroy());
                 _charts = {};
                 _paidState = {};
+                _expandedOrgs = {};
                 localStorage.removeItem('dp_data');
                 // Reset file input so the same file can be re-selected
                 const fileInput = document.getElementById('dp-fileInput');
                 if (fileInput) fileInput.value = '';
+                const searchInput = document.getElementById('dp-searchInput');
+                if (searchInput) searchInput.value = '';
                 document.getElementById('dp-loadSection').style.display = 'block';
                 document.getElementById('dp-dashboard').style.display = 'none';
                 document.getElementById('dp-clearBtn').style.display = 'none';
@@ -3867,14 +3835,10 @@
                     setTimeout(() => document.getElementById('dp-fileInput').click(), 100);
                 });
 
-                document.querySelectorAll('.dp-toggle-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        setChartPeriod(btn.getAttribute('data-period'));
-                    });
+                document.getElementById('dp-searchInput')?.addEventListener('input', (e) => {
+                    _searchQuery = (e.target.value || '').trim();
+                    applyFilters();
                 });
-
-                document.getElementById('dp-filterOrgType')?.addEventListener('change', applyFilters);
-                document.getElementById('dp-filterRange')?.addEventListener('change', applyFilters);
 
                 const saved = localStorage.getItem('dp_data');
                 if (saved) {
