@@ -977,10 +977,30 @@
         }
 
         .dp-search-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
             margin-bottom: 24px;
+            flex-wrap: wrap;
         }
 
-        .dp-search-bar input {
+        .dp-checkbox-filter {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .dp-checkbox-filter input {
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .dp-search-bar input[type="text"] {
             width: 100%;
             max-width: 400px;
             padding: 10px 14px;
@@ -1527,6 +1547,10 @@
                     </div>
                     <div class="dp-search-bar">
                         <input type="text" id="dp-searchInput" placeholder="Search orgs, reasons, users..." aria-label="Search dashboard">
+                        <label class="dp-checkbox-filter">
+                            <input type="checkbox" id="dp-includeInternal" checked>
+                            Include internal orgs
+                        </label>
                     </div>
 
                     <div class="dp-kpi-toggle">
@@ -3268,16 +3292,24 @@
             }
 
             let _searchQuery = '';
+            let _includeInternal = true;
 
             function getFilteredRows() {
-                if (!_searchQuery) return _rawRows;
-                const q = _searchQuery.toLowerCase();
                 return _rawRows.filter(row => {
-                    return (row.org || '').toLowerCase().includes(q)
-                        || (row.reason || '').toLowerCase().includes(q)
-                        || (row.user || '').toLowerCase().includes(q)
-                        || (row.source || '').toLowerCase().includes(q)
-                        || (row.orgtype || '').toLowerCase().includes(q);
+                    // Exclude internal orgs if unchecked
+                    if (!_includeInternal && !row.external) return false;
+                    // Search filter
+                    if (_searchQuery) {
+                        const q = _searchQuery.toLowerCase();
+                        if (!(
+                            (row.org || '').toLowerCase().includes(q)
+                            || (row.reason || '').toLowerCase().includes(q)
+                            || (row.user || '').toLowerCase().includes(q)
+                            || (row.source || '').toLowerCase().includes(q)
+                            || (row.orgtype || '').toLowerCase().includes(q)
+                        )) return false;
+                    }
+                    return true;
                 });
             }
 
@@ -3789,6 +3821,7 @@
                 _rawRows = [];
                 _processed = null;
                 _searchQuery = '';
+                _includeInternal = true;
                 // Properly destroy chart instances before clearing
                 Object.values(_charts).forEach(c => c && c.destroy());
                 _charts = {};
@@ -3800,6 +3833,8 @@
                 if (fileInput) fileInput.value = '';
                 const searchInput = document.getElementById('dp-searchInput');
                 if (searchInput) searchInput.value = '';
+                const internalCheckbox = document.getElementById('dp-includeInternal');
+                if (internalCheckbox) internalCheckbox.checked = true;
                 document.getElementById('dp-loadSection').style.display = 'block';
                 document.getElementById('dp-dashboard').style.display = 'none';
                 document.getElementById('dp-clearBtn').style.display = 'none';
@@ -3887,6 +3922,11 @@
 
                 document.getElementById('dp-searchInput')?.addEventListener('input', (e) => {
                     _searchQuery = (e.target.value || '').trim();
+                    applyFilters();
+                });
+
+                document.getElementById('dp-includeInternal')?.addEventListener('change', (e) => {
+                    _includeInternal = e.target.checked;
                     applyFilters();
                 });
 
