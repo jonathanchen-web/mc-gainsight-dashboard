@@ -946,14 +946,58 @@
             color: var(--muted);
         }
 
+        .dp-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .dp-toolbar input[type="text"] {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 14px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .dp-toolbar input[type="text"]::placeholder {
+            color: var(--muted);
+        }
+
+        .dp-toolbar input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        .dp-checkbox-filter {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .dp-checkbox-filter input {
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
         .dp-kpi-toggle {
             display: flex;
             gap: 0;
             border: 1px solid var(--border);
             border-radius: 6px;
             background: var(--surface);
-            width: fit-content;
-            margin-bottom: 16px;
+            margin-left: auto;
         }
 
         .dp-kpi-toggle-btn {
@@ -974,51 +1018,6 @@
         .dp-kpi-toggle-btn.active {
             background: var(--accent);
             color: white;
-        }
-
-        .dp-search-bar {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-
-        .dp-checkbox-filter {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
-            color: var(--text);
-            cursor: pointer;
-            white-space: nowrap;
-            user-select: none;
-        }
-
-        .dp-checkbox-filter input {
-            cursor: pointer;
-            accent-color: var(--accent);
-        }
-
-        .dp-search-bar input[type="text"] {
-            width: 100%;
-            max-width: 400px;
-            padding: 10px 14px;
-            font-size: 13px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--surface);
-            color: var(--text);
-            outline: none;
-            transition: border-color 0.15s;
-        }
-
-        .dp-search-bar input::placeholder {
-            color: var(--muted);
-        }
-
-        .dp-search-bar input:focus {
-            border-color: var(--accent);
         }
 
         .dp-charts-grid {
@@ -1545,17 +1544,16 @@
                             <button id="dp-clearBtn2" class="dp-action-btn dp-action-btn-danger"><i class="ph ph-trash"></i> Clear Data</button>
                         </div>
                     </div>
-                    <div class="dp-search-bar">
+                    <div class="dp-toolbar">
                         <input type="text" id="dp-searchInput" placeholder="Search orgs, reasons, users..." aria-label="Search dashboard">
                         <label class="dp-checkbox-filter">
                             <input type="checkbox" id="dp-includeInternal" checked>
                             Include internal orgs
                         </label>
-                    </div>
-
-                    <div class="dp-kpi-toggle">
-                        <button class="dp-kpi-toggle-btn active" data-kpi-period="current" onclick="window.DP.setKPIPeriod('current')">Current Month</button>
-                        <button class="dp-kpi-toggle-btn" data-kpi-period="previous" onclick="window.DP.setKPIPeriod('previous')">Previous Month</button>
+                        <div class="dp-kpi-toggle">
+                            <button class="dp-kpi-toggle-btn active" data-kpi-period="current" onclick="window.DP.setKPIPeriod('current')">Current Month</button>
+                            <button class="dp-kpi-toggle-btn" data-kpi-period="previous" onclick="window.DP.setKPIPeriod('previous')">Previous Month</button>
+                        </div>
                     </div>
 
                     <div class="dp-kpi-grid">
