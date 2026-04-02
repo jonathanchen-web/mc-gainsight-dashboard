@@ -886,8 +886,21 @@
             border-left: 4px solid var(--accent);
         }
 
+        .dp-kpi-card.used-unpaid {
+            border-left: 4px solid #94a3b8;
+        }
+
         .dp-kpi-card.added {
             border-left: 4px solid var(--green);
+        }
+
+        .dp-kpi-card.added-unpaid {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .dp-kpi-change {
+            font-size: 12px;
+            margin-top: 4px;
         }
 
         .dp-kpi-value {
@@ -1517,36 +1530,36 @@
 
                     <div class="dp-kpi-grid">
                         <div class="dp-kpi-card used">
-                            <div class="dp-kpi-label">Used This Week</div>
-                            <div class="dp-kpi-value" id="dp-kpi-used-week">0</div>
-                            <div class="dp-breakdown" id="dp-breakdown-used-week"></div>
+                            <div class="dp-kpi-label">Used This Month (Paid)</div>
+                            <div class="dp-kpi-value" id="dp-kpi-used-paid">0</div>
+                            <div class="dp-kpi-change" id="dp-kpi-used-paid-change"></div>
                         </div>
-                        <div class="dp-kpi-card used">
-                            <div class="dp-kpi-label">Used This Month</div>
-                            <div class="dp-kpi-value" id="dp-kpi-used-month">0</div>
-                            <div class="dp-breakdown" id="dp-breakdown-used-month"></div>
-                        </div>
-                        <div class="dp-kpi-card added">
-                            <div class="dp-kpi-label">Added This Week</div>
-                            <div class="dp-kpi-value" id="dp-kpi-added-week">0</div>
-                            <div class="dp-breakdown" id="dp-breakdown-added-week"></div>
+                        <div class="dp-kpi-card used-unpaid">
+                            <div class="dp-kpi-label">Used This Month (Unpaid)</div>
+                            <div class="dp-kpi-value" id="dp-kpi-used-unpaid">0</div>
+                            <div class="dp-kpi-change" id="dp-kpi-used-unpaid-change"></div>
                         </div>
                         <div class="dp-kpi-card added">
-                            <div class="dp-kpi-label">Added This Month</div>
-                            <div class="dp-kpi-value" id="dp-kpi-added-month">0</div>
-                            <div class="dp-breakdown" id="dp-breakdown-added-month"></div>
+                            <div class="dp-kpi-label">Added This Month (Paid)</div>
+                            <div class="dp-kpi-value" id="dp-kpi-added-paid">0</div>
+                            <div class="dp-kpi-change" id="dp-kpi-added-paid-change"></div>
+                        </div>
+                        <div class="dp-kpi-card added-unpaid">
+                            <div class="dp-kpi-label">Added This Month (Unpaid)</div>
+                            <div class="dp-kpi-value" id="dp-kpi-added-unpaid">0</div>
+                            <div class="dp-kpi-change" id="dp-kpi-added-unpaid-change"></div>
                         </div>
                     </div>
 
                     <div class="dp-charts-grid">
                         <div class="dp-chart-card">
-                            <div class="dp-chart-title">Datapoint Usage</div>
+                            <div class="dp-chart-title">Datapoint Usage — Month over Month (Paid vs Unpaid)</div>
                             <div class="dp-chart-container">
                                 <canvas id="dp-chartUsage"></canvas>
                             </div>
                         </div>
                         <div class="dp-chart-card">
-                            <div class="dp-chart-title">Datapoint Additions</div>
+                            <div class="dp-chart-title">Datapoint Additions — Month over Month (Paid vs Unpaid)</div>
                             <div class="dp-chart-container">
                                 <canvas id="dp-chartAdditions"></canvas>
                             </div>
@@ -3307,6 +3320,12 @@
                     });
                 });
 
+                // Global monthly paid/unpaid aggregation for KPIs and charts
+                const monthlyPaidUsed = {};
+                const monthlyUnpaidUsed = {};
+                const monthlyPaidAdded = {};
+                const monthlyUnpaidAdded = {};
+
                 // Step 3: Aggregate with row-level paid flags
                 rows.forEach(row => {
                     const date = row.date;
@@ -3323,6 +3342,15 @@
                     monthly[monthKey] = (monthly[monthKey] || 0) + used;
                     addedWeekly[weekKey] = (addedWeekly[weekKey] || 0) + added;
                     addedMonthly[monthKey] = (addedMonthly[monthKey] || 0) + added;
+
+                    // Global paid/unpaid monthly totals
+                    if (isPaid) {
+                        monthlyPaidUsed[monthKey] = (monthlyPaidUsed[monthKey] || 0) + used;
+                        monthlyPaidAdded[monthKey] = (monthlyPaidAdded[monthKey] || 0) + added;
+                    } else {
+                        monthlyUnpaidUsed[monthKey] = (monthlyUnpaidUsed[monthKey] || 0) + used;
+                        monthlyUnpaidAdded[monthKey] = (monthlyUnpaidAdded[monthKey] || 0) + added;
+                    }
 
                     if (!byOrg[org]) byOrg[org] = {
                         used: 0, added: 0, paidUsed: 0, unpaidUsed: 0, paidAdded: 0, unpaidAdded: 0,
@@ -3388,12 +3416,27 @@
                     org.transactions.sort((a, b) => b.date.localeCompare(a.date));
                 });
 
+                // Build sorted month keys for consistent chart/KPI indexing
+                const allMonthKeys = [...new Set([
+                    ...Object.keys(monthly),
+                    ...Object.keys(addedMonthly),
+                    ...Object.keys(monthlyPaidUsed),
+                    ...Object.keys(monthlyUnpaidUsed),
+                    ...Object.keys(monthlyPaidAdded),
+                    ...Object.keys(monthlyUnpaidAdded)
+                ])].sort();
+
                 _processed = {
                     weekly: Object.entries(weekly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtWeekLabel(key), value: val })),
                     monthly: Object.entries(monthly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtMonthLabel(key), value: val })),
                     addedWeekly: Object.entries(addedWeekly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtWeekLabel(key), value: val })),
                     addedMonthly: Object.entries(addedMonthly).sort((a, b) => a[0].localeCompare(b[0])).map(([key, val]) => ({ key, label: fmtMonthLabel(key), value: val })),
                     byOrg: Object.entries(byOrg).map(([name, data]) => ({ name, ...data })),
+                    // Paid/unpaid monthly series for KPIs and charts
+                    monthlyPaidUsed: allMonthKeys.map(k => ({ key: k, label: fmtMonthLabel(k), value: monthlyPaidUsed[k] || 0 })),
+                    monthlyUnpaidUsed: allMonthKeys.map(k => ({ key: k, label: fmtMonthLabel(k), value: monthlyUnpaidUsed[k] || 0 })),
+                    monthlyPaidAdded: allMonthKeys.map(k => ({ key: k, label: fmtMonthLabel(k), value: monthlyPaidAdded[k] || 0 })),
+                    monthlyUnpaidAdded: allMonthKeys.map(k => ({ key: k, label: fmtMonthLabel(k), value: monthlyUnpaidAdded[k] || 0 })),
                 };
             }
 
@@ -3457,58 +3500,89 @@
                 `;
             }
 
-            function renderKPIs() {
-                const wk = _processed.weekly;
-                const mo = _processed.monthly;
-                const addWk = _processed.addedWeekly;
-                const addMo = _processed.addedMonthly;
-
-                // Used This Week
-                document.getElementById('dp-kpi-used-week').textContent = wk.length > 0 ? n(wk[wk.length - 1].value) : '—';
-                document.getElementById('dp-breakdown-used-week').innerHTML = wk.length > 0 ? breakdownHTML(computePaidBreakdown('weekly', 'used')) : '';
-
-                // Used This Month
-                document.getElementById('dp-kpi-used-month').textContent = mo.length > 0 ? n(mo[mo.length - 1].value) : '—';
-                document.getElementById('dp-breakdown-used-month').innerHTML = mo.length > 0 ? breakdownHTML(computePaidBreakdown('monthly', 'used')) : '';
-
-                // Added This Week
-                document.getElementById('dp-kpi-added-week').textContent = addWk.length > 0 ? n(addWk[addWk.length - 1].value) : '—';
-                document.getElementById('dp-breakdown-added-week').innerHTML = addWk.length > 0 ? breakdownHTML(computePaidBreakdown('weekly', 'added')) : '';
-
-                // Added This Month
-                document.getElementById('dp-kpi-added-month').textContent = addMo.length > 0 ? n(addMo[addMo.length - 1].value) : '—';
-                document.getElementById('dp-breakdown-added-month').innerHTML = addMo.length > 0 ? breakdownHTML(computePaidBreakdown('monthly', 'added')) : '';
+            function renderMonthChange(series) {
+                // Returns { current, changeHTML } for the last two months in a series
+                if (!series || series.length === 0) return { current: 0, changeHTML: '' };
+                const curr = series[series.length - 1].value;
+                const prev = series.length >= 2 ? series[series.length - 2].value : 0;
+                const diff = curr - prev;
+                const pctVal = prev > 0 ? Math.round((diff / prev) * 100) : (curr > 0 ? 100 : 0);
+                const sign = diff > 0 ? '+' : '';
+                const cls = diff > 0 ? 'dp-change-positive' : diff < 0 ? 'dp-change-negative' : 'dp-change-neutral';
+                const changeHTML = `<span class="${cls}">${sign}${n(diff)} (${sign}${pctVal}%) vs prev month</span>`;
+                return { current: curr, changeHTML };
             }
 
-            function makeLineChart(canvasId, data, label, color) {
+            function renderKPIs() {
+                const paidUsed = renderMonthChange(_processed.monthlyPaidUsed);
+                const unpaidUsed = renderMonthChange(_processed.monthlyUnpaidUsed);
+                const paidAdded = renderMonthChange(_processed.monthlyPaidAdded);
+                const unpaidAdded = renderMonthChange(_processed.monthlyUnpaidAdded);
+
+                document.getElementById('dp-kpi-used-paid').textContent = n(paidUsed.current);
+                document.getElementById('dp-kpi-used-paid-change').innerHTML = paidUsed.changeHTML;
+
+                document.getElementById('dp-kpi-used-unpaid').textContent = n(unpaidUsed.current);
+                document.getElementById('dp-kpi-used-unpaid-change').innerHTML = unpaidUsed.changeHTML;
+
+                document.getElementById('dp-kpi-added-paid').textContent = n(paidAdded.current);
+                document.getElementById('dp-kpi-added-paid-change').innerHTML = paidAdded.changeHTML;
+
+                document.getElementById('dp-kpi-added-unpaid').textContent = n(unpaidAdded.current);
+                document.getElementById('dp-kpi-added-unpaid-change').innerHTML = unpaidAdded.changeHTML;
+            }
+
+            function makeStackedBarChart(canvasId, paidData, unpaidData, paidLabel, unpaidLabel, paidColor, unpaidColor) {
                 const ctx = document.getElementById(canvasId)?.getContext('2d');
                 if (!ctx) return;
 
                 if (_charts[canvasId]) _charts[canvasId].destroy();
 
+                const labels = paidData.map(d => d.label);
+
                 _charts[canvasId] = new Chart(ctx, {
-                    type: 'line',
+                    type: 'bar',
                     data: {
-                        labels: data.map(d => d.label),
-                        datasets: [{
-                            label: label,
-                            data: data.map(d => d.value),
-                            borderColor: color,
-                            backgroundColor: color + '20',
-                            tension: 0.4,
-                            fill: true,
-                        }]
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: paidLabel,
+                                data: paidData.map(d => d.value),
+                                backgroundColor: paidColor,
+                                borderRadius: 2,
+                            },
+                            {
+                                label: unpaidLabel,
+                                data: unpaidData.map(d => d.value),
+                                backgroundColor: unpaidColor,
+                                borderRadius: 2,
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { labels: { color: '#e2e8f0' } } },
+                        plugins: {
+                            legend: { labels: { color: '#e2e8f0' } },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    footer: (items) => {
+                                        const total = items.reduce((s, i) => s + i.parsed.y, 0);
+                                        return 'Total: ' + total.toLocaleString();
+                                    }
+                                }
+                            }
+                        },
                         scales: {
                             y: {
+                                stacked: true,
                                 grid: { color: '#6b6f8a' },
                                 ticks: { color: '#94a3b8' },
                             },
                             x: {
+                                stacked: true,
                                 grid: { display: false },
                                 ticks: { color: '#94a3b8' },
                             },
@@ -3521,13 +3595,24 @@
                 document.querySelectorAll('.dp-toggle-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelector(`.dp-toggle-btn[data-period="${period}"]`)?.classList.add('active');
                 renderKPIs();
-                redrawCharts(period);
+                redrawCharts();
             }
 
-            function redrawCharts(period) {
-                const data = period === 'weekly' ? _processed.weekly : _processed.monthly;
-                makeLineChart('dp-chartUsage', data, 'Datapoints Used', '#6366f1');
-                makeLineChart('dp-chartAdditions', data, 'Datapoints Added', '#10b981');
+            function redrawCharts() {
+                makeStackedBarChart(
+                    'dp-chartUsage',
+                    _processed.monthlyPaidUsed,
+                    _processed.monthlyUnpaidUsed,
+                    'Paid Usage', 'Unpaid Usage',
+                    '#6366f1', '#94a3b8'
+                );
+                makeStackedBarChart(
+                    'dp-chartAdditions',
+                    _processed.monthlyPaidAdded,
+                    _processed.monthlyUnpaidAdded,
+                    'Paid Added', 'Unpaid Added',
+                    '#10b981', '#f59e0b'
+                );
             }
 
             function sortOrgTable(col) {
@@ -3656,10 +3741,10 @@
 
             function applyFilters() {
                 processData();
-                const period = document.querySelector('.dp-toggle-btn.active')?.getAttribute('data-period') || 'weekly';
+                initPaidState();
                 renderKPIs();
                 renderOrgTable();
-                redrawCharts(period);
+                redrawCharts();
             }
 
             function renderDashboard() {
@@ -3667,7 +3752,7 @@
 
                 renderKPIs();
                 renderOrgTable();
-                redrawCharts('weekly');
+                redrawCharts();
 
                 document.getElementById('dp-loadSection').style.display = 'none';
                 document.getElementById('dp-dashboard').style.display = 'block';
