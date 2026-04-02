@@ -1114,18 +1114,6 @@
             font-weight: 400;
         }
 
-        .dp-inline-breakdown {
-            display: inline-flex;
-            gap: 4px;
-            margin-left: 6px;
-            vertical-align: middle;
-        }
-
-        .dp-inline-breakdown .dp-break-badge {
-            font-size: 9px;
-            padding: 0px 4px;
-        }
-
         .dp-detail-header-row td {
             padding: 0 !important;
             border-bottom: 2px solid var(--border) !important;
@@ -1140,7 +1128,7 @@
 
         .dp-detail-table th {
             background: rgba(99, 102, 241, 0.06);
-            padding: 6px 10px;
+            padding: 10px 14px;
             text-align: left;
             font-weight: 600;
             font-size: 11px;
@@ -1154,9 +1142,10 @@
         }
 
         .dp-detail-table td {
-            padding: 5px 10px;
+            padding: 8px 14px;
             border-bottom: 1px solid rgba(107, 111, 138, 0.2);
             color: var(--text);
+            font-size: 12px;
         }
 
         .dp-detail-table tbody tr:hover {
@@ -1165,6 +1154,13 @@
 
         .dp-detail-table tbody tr:last-child td {
             border-bottom: none;
+        }
+
+        .dp-detail-reason {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .dp-footer {
@@ -1564,10 +1560,14 @@
                                 <tr>
                                     <th style="cursor: pointer;" onclick="window.DP.sortOrgTable('org')">Organization</th>
                                     <th style="cursor: pointer;" onclick="window.DP.sortOrgTable('type')">Type</th>
-                                    <th style="text-align: right; cursor: pointer;" onclick="window.DP.sortOrgTable('used')">Used (Paid / Unpaid)</th>
-                                    <th style="text-align: right;">Added (Paid / Unpaid)</th>
+                                    <th style="cursor: pointer;" onclick="window.DP.sortOrgTable('used')">Total Used</th>
+                                    <th>Paid Used</th>
+                                    <th>Unpaid Used</th>
+                                    <th>Total Added</th>
+                                    <th>Paid Added</th>
+                                    <th>Unpaid Added</th>
                                     <th>Latest Reason</th>
-                                    <th style="text-align: center;">Current Status</th>
+                                    <th>Current Status</th>
                                 </tr>
                             </thead>
                             <tbody id="dp-tblOrg"></tbody>
@@ -3579,20 +3579,18 @@
                     const chevron = isExpanded ? '▾' : '▸';
                     const txCount = org.transactions ? org.transactions.length : 0;
 
-                    // Paid/unpaid breakdown for this org
-                    const paidUsedBadge = org.paidUsed > 0 ? `<span class="dp-break-badge dp-break-paid">${n(org.paidUsed)}</span>` : '';
-                    const unpaidUsedBadge = org.unpaidUsed > 0 ? `<span class="dp-break-badge dp-break-unpaid">${n(org.unpaidUsed)}</span>` : '';
-                    const paidAddedBadge = org.paidAdded > 0 ? `<span class="dp-break-badge dp-break-paid">${n(org.paidAdded)}</span>` : '';
-                    const unpaidAddedBadge = org.unpaidAdded > 0 ? `<span class="dp-break-badge dp-break-unpaid">${n(org.unpaidAdded)}</span>` : '';
-
                     let rowHTML = `
                         <tr class="dp-org-row${isExpanded ? ' dp-org-expanded' : ''}" onclick="window.DP.toggleOrgExpand('${org.name.replace(/'/g, "\\'")}')" style="cursor: pointer;">
                             <td><span class="dp-expand-chevron">${chevron}</span> ${org.name} <span class="dp-tx-count">(${txCount})</span></td>
                             <td>${type}</td>
-                            <td style="text-align: right;">${n(org.used)} <span class="dp-inline-breakdown">${paidUsedBadge} ${unpaidUsedBadge}</span></td>
-                            <td style="text-align: right;">${n(org.added)} <span class="dp-inline-breakdown">${paidAddedBadge} ${unpaidAddedBadge}</span></td>
+                            <td>${n(org.used)}</td>
+                            <td>${org.paidUsed > 0 ? n(org.paidUsed) : '—'}</td>
+                            <td>${org.unpaidUsed > 0 ? n(org.unpaidUsed) : '—'}</td>
+                            <td>${n(org.added)}</td>
+                            <td>${org.paidAdded > 0 ? n(org.paidAdded) : '—'}</td>
+                            <td>${org.unpaidAdded > 0 ? n(org.unpaidAdded) : '—'}</td>
                             <td style="font-size: 12px; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${reasonText}">${reasonText}</td>
-                            <td style="text-align: center;">
+                            <td>
                                 <span class="dp-break-badge ${_paidState[org.name] ? 'dp-break-paid' : 'dp-break-unpaid'}">${_paidState[org.name] ? 'Paid' : 'Unpaid'}</span>
                             </td>
                         </tr>
@@ -3602,7 +3600,7 @@
                     if (isExpanded && org.transactions && org.transactions.length > 0) {
                         rowHTML += `
                             <tr class="dp-detail-header-row">
-                                <td colspan="6">
+                                <td colspan="10">
                                     <table class="dp-detail-table">
                                         <thead>
                                             <tr>
@@ -3628,10 +3626,10 @@
                                 <tr>
                                     <td>${tx.date}</td>
                                     <td>${txType}</td>
-                                    <td style="text-align: right;">${n(tx.amount)}</td>
-                                    <td style="text-align: right;">${n(tx.balance)}</td>
-                                    <td style="font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${tx.reason}">${tx.reason}</td>
-                                    <td style="font-size: 12px;">${tx.user}</td>
+                                    <td>${n(tx.amount)}</td>
+                                    <td>${n(tx.balance)}</td>
+                                    <td class="dp-detail-reason" title="${tx.reason}">${tx.reason}</td>
+                                    <td>${tx.user}</td>
                                     <td>${paidBadge}</td>
                                 </tr>
                             `;
