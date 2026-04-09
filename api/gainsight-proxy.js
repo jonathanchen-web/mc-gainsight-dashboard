@@ -42,9 +42,20 @@ async function fetchAll(endpoint, key, maxPages = 10) {
       ? `${BASE_URL}/${endpoint}?scrollId=${encodeURIComponent(scrollId)}`
       : `${BASE_URL}/${endpoint}?pageSize=200`;
 
-    const res = await fetch(url, {
-      headers: { 'X-APTRINSIC-API-KEY': API_KEY },
-    });
+    let res;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch(url, {
+        headers: { 'X-APTRINSIC-API-KEY': API_KEY },
+      });
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
+        const waitMs = retryAfter ? retryAfter * 1000 : (attempt + 1) * 5000;
+        console.log(`Rate limited on /${endpoint}, waiting ${waitMs}ms (attempt ${attempt + 1}/3)`);
+        await sleep(waitMs);
+        continue;
+      }
+      break;
+    }
 
     if (!res.ok) throw new Error(`Gainsight /${endpoint} returned ${res.status}`);
 
