@@ -1676,7 +1676,11 @@
         window.GS = (() => {
             const EXCLUDE_DOMAINS = ['manifestclimate', 'grandviewresearch', 'neoimpact'];
             const EXCLUDE_EMAILS = ['s@solving.co', 'hello@ameliazimmerman.com'];
-            const EXCLUDE_ACCT_NAMES = ['akshay testing', 'archana testing'];
+            // Keyword-based exclusion: any account name containing these substrings is filtered out.
+            // 'mant ' (with trailing space) excludes "Mant Bank", "Mant Co." etc. but NOT "Mantle Climate".
+            const EXCLUDE_ACCT_KEYWORDS = ['test', 'staging', 'gopi', 'example', 'sichon', 'qa organization', 'mant '];
+            // Exact-name exclusions for accounts that don't match keyword patterns
+            const EXCLUDE_ACCT_NAMES = ['climate profile history'];
             const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
             const PALETTE = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#34d399','#fb923c','#60a5fa','#e879f9'];
 
@@ -2121,9 +2125,13 @@
                     }
                     return a;
                 }).filter(a => {
-                    if (EXCLUDE_ACCT_NAMES.some(n => a.name.toLowerCase().includes(n.toLowerCase()))) return false;
+                    const nameLower = a.name.toLowerCase();
+                    // Keyword-based exclusion (substring match)
+                    if (EXCLUDE_ACCT_KEYWORDS.some(kw => nameLower.includes(kw))) return false;
+                    // Exact-name exclusion
+                    if (EXCLUDE_ACCT_NAMES.some(n => nameLower.includes(n.toLowerCase()))) return false;
                     // HubSpot exclusion filter
-                    if (_excludedNames.size > 0 && _excludedNames.has(a.name.toLowerCase().trim())) return false;
+                    if (_excludedNames.size > 0 && _excludedNames.has(nameLower.trim())) return false;
                     return true;
                 });
 
@@ -2770,7 +2778,7 @@
   { id: 13, date: "2026-01-29", title: "TCFD documents showing as 'CSDS' in platform", description: "Incorrect naming — TCFD document links displaying as 'CSDS' instead of correct standard name.", feature: "Compliance UI", reporter: "Jeff Horlor", priority: "Medium", status: "Closed", resolution: "Hard-coded names updated in production on Jan 30. Correct naming confirmed: TCFD, IFRS S2, ESRS.", client: "All users", addedOn: "2026-03-24", threadTs: "1769736836.237369" },
   { id: 14, date: "2026-01-16", title: "Demo assessment stuck on 'Processing Documents' for 1+ hour", description: "Fidelity demo assessment stuck on Processing Documents step with upcoming 10am demo.", feature: "Assessment Processing", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "Resolved before demo time.", client: "Fidelity (demo)", addedOn: "2026-03-24", threadTs: "1768572631.048159" },
   { id: 15, date: "2025-12-11", title: "CSRD datapoints stuck in queue — payload too big for Databricks", description: "Client assessment partially ran but CSRD datapoints stuck for a day. Payload exceeds Databricks character limit.", feature: "Assessment Processing", reporter: "Adam Rochwerg", priority: "High", status: "Closed", resolution: "Bug identified (Databricks payload size limit). Manually run for client. Fix discussed with engineering.", client: "Mantle Climate", addedOn: "2026-03-24", threadTs: "1765483213.957329" },
-  { id: 16, date: "2025-12-08", title: "CSRD section labels changed from 'E1 - Climate Change' to just 'E1'", description: "Labels in platform lost descriptive names, making navigation harder for users unfamiliar with regulation codes.", feature: "Compliance UI", reporter: "Adam Rochwerg", priority: "Medium", status: "Open", resolution: "Being addressed as part of Airtable framework standardization work, planned for sprint starting week of 2026-04-07 per Phillip Nguyen.", client: "All users", addedOn: "2026-03-24", threadTs: "1765222518.514899" },
+  { id: 16, date: "2025-12-08", title: "CSRD section labels changed from 'E1 - Climate Change' to just 'E1'", description: "Labels in platform lost descriptive names, making navigation harder for users unfamiliar with regulation codes.", feature: "Compliance UI", reporter: "Adam Rochwerg", priority: "Medium", status: "Open", resolution: "Deferred to pre-irtable migration. Labels reflect methodology sheet directly.", client: "All users", addedOn: "2026-03-24", threadTs: "1765222518.514899" },
   { id: 17, date: "2025-11-05", title: "Agent keeps disconnecting during output generation", description: "Agent disconnects periodically when generating outputs, even for simple questions.", feature: "Agent", reporter: "Jeff Horlor", priority: "Medium", status: "Open", resolution: "Acknowledged as Beta limitation.", client: "Internal", addedOn: "2026-03-24", threadTs: "1762359808.120559" },
   { id: 18, date: "2025-11-04", title: "Website, agent, and email all down", description: "GoDaddy hosting problem causing website, agent, and email services to all go down simultaneously.", feature: "Infrastructure", reporter: "Jeff Horlor", priority: "High", status: "Closed", resolution: "GoDaddy hosting issue fixed by Muchen. Services restored.", client: "Company-wide", addedOn: "2026-03-24", threadTs: "1762265148.057689" },
   { id: 19, date: "2025-10-23", title: "Client not receiving verification code for login", description: "ReTech (Oaktree) user unable to receive verification code during registration, preventing platform access.", feature: "Login/Auth", reporter: "Adam Rochwerg", priority: "High", status: "Closed", resolution: "User eventually got in after multiple attempts and support intervention.", client: "ReTech (Oaktree)", addedOn: "2026-03-24", threadTs: "1761225227.849689" }
