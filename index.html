@@ -2087,6 +2087,17 @@
                         }
                     }
                 }
+                // Build per-user filtered event counts from real event data
+                const _filteredUserEventCounts = {};  // userId → event count (filtered by time + feature)
+                const _filteredActiveUserIds = new Set(Object.keys(_featureUserMap)); // users with any filtered event
+
+                for (const evt of _featureEvents) {
+                    if (evt.d < cutoffMs) continue;
+                    if (isExcludedUser(evt.u)) continue;
+                    if (!featureFilterSet.has(evt.m)) continue;
+                    _filteredUserEventCounts[evt.u] = (_filteredUserEventCounts[evt.u] || 0) + 1;
+                }
+
                 // Convert Sets to arrays
                 for (const uid of Object.keys(_featureUserMap)) {
                     _featureUserMap[uid] = [..._featureUserMap[uid]];
@@ -2113,15 +2124,17 @@
                 });
 
                 // Apply time period and feature filters for active users
+                // Use real event data: a user is active if they have at least one event
+                // in the selected features within the time window
                 let users = allExternalUsers.filter(u => {
-                    // Time period filter — only use lastSeenDate (actual visit timestamp)
-                    const lastSeen = u.lastSeenDate || 0;
-                    const lastSeenMs = typeof lastSeen === 'number' ? lastSeen : new Date(lastSeen).getTime();
-                    if (!lastSeenMs || lastSeenMs < cutoffMs) return false;
-                    // Feature filter: keep users whose inferred top-features overlap with selected features
-                    const topFeats = inferTopFeatures(u);
-                    if (!topFeats.some(f => featureFilter.includes(f))) return false;
-                    return true;
+                    const uid = u.identifyId || u.id;
+                    return _filteredActiveUserIds.has(uid);
+                });
+
+                // Override totalEvents with filtered event counts so rankings reflect selected features
+                users.forEach(u => {
+                    const uid = u.identifyId || u.id;
+                    u.totalEvents = _filteredUserEventCounts[uid] || 0;
                 });
 
                 let accounts = (raw.accounts || []).map(a => {
@@ -2194,14 +2207,18 @@
                 const prevCutoffDate = new Date(now.getFullYear(), now.getMonth() - prevPeriodMonths, 1);
                 const prevCutoffMs = prevCutoffDate.getTime();
 
-                // Filter users with the previous period cutoff (same logic as current period)
+                // Filter users with the previous period cutoff using real event data
+                // Build set of users active in the previous period for the selected features
+                const _prevActiveUserIds = new Set();
+                for (const evt of _featureEvents) {
+                    if (evt.d < prevCutoffMs) continue;
+                    if (isExcludedUser(evt.u)) continue;
+                    if (!featureFilterSet.has(evt.m)) continue;
+                    _prevActiveUserIds.add(evt.u);
+                }
                 const prevUsers = allExternalUsers.filter(u => {
-                    const lastSeen = u.lastSeenDate || 0;
-                    const lastSeenMs = typeof lastSeen === 'number' ? lastSeen : new Date(lastSeen).getTime();
-                    if (!lastSeenMs || lastSeenMs < prevCutoffMs) return false;
-                    const topFeats = inferTopFeatures(u);
-                    if (!topFeats.some(f => featureFilter.includes(f))) return false;
-                    return true;
+                    const uid = u.identifyId || u.id;
+                    return _prevActiveUserIds.has(uid);
                 });
 
                 // Build account user counts for previous period
