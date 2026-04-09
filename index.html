@@ -1937,7 +1937,7 @@
             }
 
             // Build monthly trend data from users, accounts, and feature events
-            function buildMonthlyTrends(users, accounts, featureEvents, timePeriodMonths, cutoffMs, userAcctMap, validAcctIds) {
+            function buildMonthlyTrends(users, accounts, featureEvents, timePeriodMonths, cutoffMs, userAcctMap, validAcctIds, featureFilter) {
                 const now = new Date();
                 const months = [];
                 // Generate month labels for the selected period
@@ -1950,12 +1950,18 @@
                     });
                 }
 
-                // Active users per month — use featureEvents (individual event timestamps)
+                // Filter events by selected features (if provided)
+                const featureFilterSet = featureFilter ? new Set(featureFilter) : null;
+                const filteredEvents = featureFilterSet
+                    ? featureEvents.filter(evt => featureFilterSet.has(evt.m))
+                    : featureEvents;
+
+                // Active users per month — use filteredEvents (individual event timestamps)
                 // so users active in multiple months are counted in each month, not just
                 // the month of their lastSeenDate.
                 const activeUsersPerMonth = months.map(m => {
                     const userIds = new Set();
-                    for (const evt of featureEvents) {
+                    for (const evt of filteredEvents) {
                         if (evt.d >= m.start && evt.d <= m.end) {
                             userIds.add(evt.u);
                         }
@@ -1972,11 +1978,11 @@
                     }).length;
                 });
 
-                // Active accounts per month — use featureEvents to count accounts with
+                // Active accounts per month — use filteredEvents to count accounts with
                 // at least one user event in that month (same fix as active users)
                 const activeAcctsPerMonth = months.map(m => {
                     const acctIds = new Set();
-                    for (const evt of featureEvents) {
+                    for (const evt of filteredEvents) {
                         if (evt.d >= m.start && evt.d <= m.end) {
                             const acctId = userAcctMap && userAcctMap[evt.u];
                             if (acctId && (!validAcctIds || validAcctIds.has(acctId))) {
@@ -1996,9 +2002,9 @@
                     }).length;
                 });
 
-                // Page view events per month (from featureEvents)
+                // Page view events per month (from filteredEvents)
                 const eventsPerMonth = months.map(m => {
-                    return featureEvents.filter(e => e.d >= m.start && e.d <= m.end).length;
+                    return filteredEvents.filter(e => e.d >= m.start && e.d <= m.end).length;
                 });
 
                 return {
@@ -2052,9 +2058,14 @@
                     if (uid) _userAcctMap[uid] = u.accountId;
                 });
 
+                // Build a Set of selected features for fast lookup
+                const featureFilterSet = new Set(featureFilter);
+
                 for (const evt of _featureEvents) {
                     if (evt.d < cutoffMs) continue; // skip events outside time window
                     if (isExcludedUser(evt.u)) continue; // skip internal/excluded users
+                    // Skip events whose module is not in the selected feature filter
+                    if (!featureFilterSet.has(evt.m)) continue;
                     // Module-level map (for user filtering)
                     if (!_featureUserMap[evt.u]) _featureUserMap[evt.u] = new Set();
                     _featureUserMap[evt.u].add(evt.m);
@@ -2168,7 +2179,7 @@
 
                 // Build monthly trend data from feature events
                 const validAcctIdSet = new Set(accounts.map(a => a.id));
-                const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs, _userAcctMap, validAcctIdSet);
+                const trendData = buildMonthlyTrends(users, accounts, _featureEvents, timePeriodMonths, cutoffMs, _userAcctMap, validAcctIdSet, featureFilter);
 
                 // Compute % change: compare current period against the previous period
                 // using the EXACT same logic (lastSeenDate-based filtering).
