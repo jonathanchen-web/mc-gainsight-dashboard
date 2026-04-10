@@ -2121,8 +2121,13 @@
                     if (!u.name && (u.firstName || u.lastName)) {
                         u.name = [u.firstName, u.lastName].filter(Boolean).join(' ');
                     }
-                    // Normalize event count: Gainsight PX returns numberOfVisits, not totalEvents
-                    if (u.totalEvents === undefined && u.numberOfVisits !== undefined) {
+                    // Reset event count from numberOfVisits on every call. The subset-view
+                    // branch below mutates u.totalEvents to a filtered count, and raw.users
+                    // holds the same object references across processData calls, so without
+                    // this reset the mutation leaks from one render into the next (e.g. you
+                    // toggle Tracker off then back on and Top 10 Users still shows the
+                    // narrowed counts from the previous render).
+                    if (u.numberOfVisits !== undefined) {
                         u.totalEvents = u.numberOfVisits;
                     }
                     return u;
@@ -2136,22 +2141,24 @@
 
                 // Apply time period and feature filters for active users.
                 // HYBRID:
-                //   - Default view (all top features selected): use Gainsight's own
-                //     lastSeenDate heartbeat. This is the comprehensive "who actually
-                //     touched the product" signal and matches what Gainsight's UI shows.
-                //   - Subset view (user narrowed the feature filter): use event-based
-                //     filtering so KPIs, Top 10, and MoM trends correctly narrow to the
-                //     selected features.
+                //   - Default view (all top features selected): use Gainsight's
+                //     lastSeenDate heartbeat. Comprehensive "who touched the product".
+                //   - Subset view: take the same lastSeenDate-active baseline and
+                //     intersect it with users who also fired at least one event in
+                //     the selected features. This keeps the baseline consistent so
+                //     toggling a feature off narrows monotonically from the default
+                //     count instead of collapsing to a completely different metric.
+                const lastSeenActive = allExternalUsers.filter(u => {
+                    const ls = u.lastSeenDate;
+                    const lsMs = typeof ls === 'number' ? ls : (ls ? new Date(ls).getTime() : 0);
+                    return lsMs >= cutoffMs;
+                });
                 let users;
                 if (isDefaultView) {
-                    users = allExternalUsers.filter(u => {
-                        const ls = u.lastSeenDate;
-                        const lsMs = typeof ls === 'number' ? ls : (ls ? new Date(ls).getTime() : 0);
-                        return lsMs >= cutoffMs;
-                    });
-                    // Keep totalEvents as numberOfVisits (already normalized above)
+                    users = lastSeenActive;
+                    // totalEvents stays as numberOfVisits (reset at the top of the map above).
                 } else {
-                    users = allExternalUsers.filter(u => {
+                    users = lastSeenActive.filter(u => {
                         const uid = u.identifyId || u.id;
                         return _filteredActiveUserIds.has(uid);
                     });
@@ -2161,6 +2168,7 @@
                         u.totalEvents = _filteredUserEventCounts[uid] || 0;
                     });
                 }
+                console.log(`[GS] filter=${isDefaultView ? 'DEFAULT' : 'SUBSET ['+featureFilter.join(',')+']'} cutoff=${cutoffDate.toISOString().slice(0,10)} lastSeenActive=${lastSeenActive.length} → users=${users.length}`);
 
                 let accounts = (raw.accounts || []).map(a => {
                     // Normalize sector: PX stores it in customAttributes.sector or top-level industry
@@ -2232,14 +2240,16 @@
                 const prevCutoffDate = new Date(now.getFullYear(), now.getMonth() - prevPeriodMonths, 1);
                 const prevCutoffMs = prevCutoffDate.getTime();
 
-                // Previous-period active users — hybrid, same logic as current period.
+                // Previous-period active users — same hybrid semantics: lastSeenDate
+                // baseline, intersected with feature-event activity in subset view.
+                const prevLastSeenActive = allExternalUsers.filter(u => {
+                    const ls = u.lastSeenDate;
+                    const lsMs = typeof ls === 'number' ? ls : (ls ? new Date(ls).getTime() : 0);
+                    return lsMs >= prevCutoffMs;
+                });
                 let prevUsers;
                 if (isDefaultView) {
-                    prevUsers = allExternalUsers.filter(u => {
-                        const ls = u.lastSeenDate;
-                        const lsMs = typeof ls === 'number' ? ls : (ls ? new Date(ls).getTime() : 0);
-                        return lsMs >= prevCutoffMs;
-                    });
+                    prevUsers = prevLastSeenActive;
                 } else {
                     const _prevActiveUserIds = new Set();
                     for (const evt of _featureEvents) {
@@ -2248,7 +2258,7 @@
                         if (!featureFilterSet.has(evt.m)) continue;
                         _prevActiveUserIds.add(evt.u);
                     }
-                    prevUsers = allExternalUsers.filter(u => {
+                    prevUsers = prevLastSeenActive.filter(u => {
                         const uid = u.identifyId || u.id;
                         return _prevActiveUserIds.has(uid);
                     });
