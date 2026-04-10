@@ -1950,9 +1950,13 @@
                     });
                 }
 
-                // Filter events by selected features (if provided)
+                // Filter events by selected features (if provided).
+                // In default view (all top features selected), keep all events including
+                // Homepage and any modules not in FEATURE_HIERARCHY so the MoM chart
+                // reflects real Gainsight activity rather than only the curated subset.
                 const featureFilterSet = featureFilter ? new Set(featureFilter) : null;
-                const filteredEvents = featureFilterSet
+                const isDefaultView = featureFilter && featureFilter.length === TOP_FEATURES.length;
+                const filteredEvents = (featureFilterSet && !isDefaultView)
                     ? featureEvents.filter(evt => featureFilterSet.has(evt.m))
                     : featureEvents;
 
@@ -2060,12 +2064,19 @@
 
                 // Build a Set of selected features for fast lookup
                 const featureFilterSet = new Set(featureFilter);
+                // Default view = all top-level features selected. In this mode we don't
+                // drop events by module (so Homepage / unmapped modules still count) and
+                // we restore lastSeenDate-based active-user filtering downstream so the
+                // "active accounts" KPI reflects Gainsight's real heartbeat, not just the
+                // subset of custom View Page events in the proxy's EVENT_TO_MODULE map.
+                const isDefaultView = featureFilter.length === TOP_FEATURES.length;
 
                 for (const evt of _featureEvents) {
                     if (evt.d < cutoffMs) continue; // skip events outside time window
                     if (isExcludedUser(evt.u)) continue; // skip internal/excluded users
-                    // Skip events whose module is not in the selected feature filter
-                    if (!featureFilterSet.has(evt.m)) continue;
+                    // In subset view, skip events whose module is not in the selected feature filter.
+                    // In default view, keep all events so Homepage and other unmapped modules still count.
+                    if (!isDefaultView && !featureFilterSet.has(evt.m)) continue;
                     // Module-level map (for user filtering)
                     if (!_featureUserMap[evt.u]) _featureUserMap[evt.u] = new Set();
                     _featureUserMap[evt.u].add(evt.m);
@@ -2094,7 +2105,7 @@
                 for (const evt of _featureEvents) {
                     if (evt.d < cutoffMs) continue;
                     if (isExcludedUser(evt.u)) continue;
-                    if (!featureFilterSet.has(evt.m)) continue;
+                    if (!isDefaultView && !featureFilterSet.has(evt.m)) continue;
                     _filteredUserEventCounts[evt.u] = (_filteredUserEventCounts[evt.u] || 0) + 1;
                 }
 
@@ -2123,19 +2134,33 @@
                     return true;
                 });
 
-                // Apply time period and feature filters for active users
-                // Use real event data: a user is active if they have at least one event
-                // in the selected features within the time window
-                let users = allExternalUsers.filter(u => {
-                    const uid = u.identifyId || u.id;
-                    return _filteredActiveUserIds.has(uid);
-                });
-
-                // Override totalEvents with filtered event counts so rankings reflect selected features
-                users.forEach(u => {
-                    const uid = u.identifyId || u.id;
-                    u.totalEvents = _filteredUserEventCounts[uid] || 0;
-                });
+                // Apply time period and feature filters for active users.
+                // HYBRID:
+                //   - Default view (all top features selected): use Gainsight's own
+                //     lastSeenDate heartbeat. This is the comprehensive "who actually
+                //     touched the product" signal and matches what Gainsight's UI shows.
+                //   - Subset view (user narrowed the feature filter): use event-based
+                //     filtering so KPIs, Top 10, and MoM trends correctly narrow to the
+                //     selected features.
+                let users;
+                if (isDefaultView) {
+                    users = allExternalUsers.filter(u => {
+                        const ls = u.lastSeenDate;
+                        const lsMs = typeof ls === 'number' ? ls : (ls ? new Date(ls).getTime() : 0);
+                        return lsMs >= cutoffMs;
+                    });
+                    // Keep totalEvents as numberOfVisits (already normalized above)
+                } else {
+                    users = allExternalUsers.filter(u => {
+                        const uid = u.identifyId || u.id;
+                        return _filteredActiveUserIds.has(uid);
+                    });
+                    // Override totalEvents with filtered event counts so rankings reflect selected features
+                    users.forEach(u => {
+                        const uid = u.identifyId || u.id;
+                        u.totalEvents = _filteredUserEventCounts[uid] || 0;
+                    });
+                }
 
                 let accounts = (raw.accounts || []).map(a => {
                     // Normalize sector: PX stores it in customAttributes.sector or top-level industry
@@ -2207,19 +2232,27 @@
                 const prevCutoffDate = new Date(now.getFullYear(), now.getMonth() - prevPeriodMonths, 1);
                 const prevCutoffMs = prevCutoffDate.getTime();
 
-                // Filter users with the previous period cutoff using real event data
-                // Build set of users active in the previous period for the selected features
-                const _prevActiveUserIds = new Set();
-                for (const evt of _featureEvents) {
-                    if (evt.d < prevCutoffMs) continue;
-                    if (isExcludedUser(evt.u)) continue;
-                    if (!featureFilterSet.has(evt.m)) continue;
-                    _prevActiveUserIds.add(evt.u);
+                // Previous-period active users — hybrid, same logic as current period.
+                let prevUsers;
+                if (isDefaultView) {
+                    prevUsers = allExternalUsers.filter(u => {
+                        const ls = u.lastSeenDate;
+                        const lsMs = typeof ls === 'number' ? ls : (ls ? new Date(ls).getTime() : 0);
+                        return lsMs >= prevCutoffMs;
+                    });
+                } else {
+                    const _prevActiveUserIds = new Set();
+                    for (const evt of _featureEvents) {
+                        if (evt.d < prevCutoffMs) continue;
+                        if (isExcludedUser(evt.u)) continue;
+                        if (!featureFilterSet.has(evt.m)) continue;
+                        _prevActiveUserIds.add(evt.u);
+                    }
+                    prevUsers = allExternalUsers.filter(u => {
+                        const uid = u.identifyId || u.id;
+                        return _prevActiveUserIds.has(uid);
+                    });
                 }
-                const prevUsers = allExternalUsers.filter(u => {
-                    const uid = u.identifyId || u.id;
-                    return _prevActiveUserIds.has(uid);
-                });
 
                 // Build account user counts for previous period
                 const prevUsersByAcct = {};
