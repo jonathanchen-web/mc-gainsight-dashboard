@@ -2080,9 +2080,17 @@
                     // Module-level map (for user filtering)
                     if (!_featureUserMap[evt.u]) _featureUserMap[evt.u] = new Set();
                     _featureUserMap[evt.u].add(evt.m);
-                    // Sub-feature counts from actual event name
-                    // evt.e = event name (from proxy), fall back to module-based first sub if missing
-                    const sub = (evt.e && PAGE_TO_SUB[evt.e]) || (MODULE_TO_SUBS[evt.m] && MODULE_TO_SUBS[evt.m][0]) || null;
+                    // Sub-feature attribution priority:
+                    //   1) evt.s — URL-derived sub emitted by the proxy (covers
+                    //      "Time on Page" events which carry the real URL path).
+                    //   2) PAGE_TO_SUB[evt.e] — legacy "View Page - X" event name map.
+                    //   3) MODULE_TO_SUBS[evt.m][0] — last-resort fallback to the
+                    //      module's first sub so unattributed events still roll up
+                    //      to the correct top-level feature.
+                    const sub = evt.s
+                        || (evt.e && PAGE_TO_SUB[evt.e])
+                        || (MODULE_TO_SUBS[evt.m] && MODULE_TO_SUBS[evt.m][0])
+                        || null;
                     if (sub) {
                         _subFeatureCounts[sub] = (_subFeatureCounts[sub] || 0) + 1;
                         if (!_subFeatureUsers[sub]) _subFeatureUsers[sub] = new Set();

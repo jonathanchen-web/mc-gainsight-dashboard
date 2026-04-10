@@ -1,4 +1,9 @@
 {
   "buildCommand": "",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "functions": {
+    "api/gainsight-proxy.js": {
+      "maxDuration": 60
+    }
+  }
 }
