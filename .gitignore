@@ -1,2 +1,7 @@
 # Stale local skill scaffold superseded by the active vercel-deploy skill
 netlify-deploy-skill/
+
+# Local secrets — never commit
+.env
+.env.*
+!.env.example
